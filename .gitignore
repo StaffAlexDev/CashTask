@@ -1,0 +1,5 @@
+.env
+.venv_cashtask
+.idea
+databases/cashtask.db
+__pycache__
