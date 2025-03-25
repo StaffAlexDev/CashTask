@@ -1,0 +1,16 @@
+{
+  "unknown_user": {
+    "greetings": "Hello! We don't know each other yet.\nPlease select your position.",
+    "waiting_accept": "You have selected the role:\nYour request has been sent for approval. Please wait for a response."
+  },
+  "info": {
+    "user_accept": "User: requires role approval"
+  },
+  "language": {
+    "select_lang": "Choose a language",
+    "accept_lang": "Your choice has been saved"
+  },
+  "start_menu": {
+    "welcome": "Hello, how can I help you?"
+  }
+}

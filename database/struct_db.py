@@ -14,26 +14,9 @@ def create_tables():
             last_name TEXT,                             -- Фамилия пользователя
             language TEXT,                              -- Выбранный язык
             phone_number TEXT,                          -- Номер телефона
-            role_id INTEGER NOT NULL,                   -- Роль (ссылка на таблицу roles)
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата регистрации
-            FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE
+            role TEXT,                                  -- Роль (ссылка на таблицу roles)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
         );
-    """)
-
-    # Таблица с ролей
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS roles (
-            role_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            role_name TEXT UNIQUE NOT NULL,
-            access_level INTEGER NOT NULL
-        );
-    """)
-
-    cursor.execute("""
-        INSERT OR IGNORE INTO roles (role_name, access_level) VALUES
-        ('worker', 1),
-        ('admin', 2),
-        ('root', 10);
     """)
 
     cursor.execute("""
@@ -56,6 +39,7 @@ def create_tables():
             car_model TEXT,                            -- Модель машины
             car_year INTEGER,                          -- Год выпуска
             license_plate TEXT UNIQUE,                 -- Номерной знак
+            vin_code TEXT UNIQUE,                      -- VIN
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         );
     """)

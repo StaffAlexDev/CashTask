@@ -8,16 +8,18 @@ class FinanceType(Enum):
 
 
 # Добавление пользователя
-def add_user(telegram_id, first_name, last_name, phone_number, role):
+def add_user(telegram_id, first_name, last_name, role):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
+
+        sql = 'SELECT * FROM users WHERE telegram_id = ?'
+        cursor.execute(sql, (telegram_id,))
         if cursor.fetchone() is not None:
             print("Пользователь уже существует")
             return
         cursor.execute(
-            'INSERT INTO users (telegram_id, first_name, last_name, phone_number, role) VALUES (?, ?, ?, ?, ?)',
-            (telegram_id, first_name, last_name, phone_number, role)
+            'INSERT INTO users (telegram_id, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)',
+            (telegram_id, first_name, last_name, role)
         )
         conn.commit()
 
@@ -29,14 +31,6 @@ def get_user_by_telegram_id(telegram_id):
         cursor.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,))
         curr_user = cursor.fetchone()
         return curr_user
-
-
-def get_roles():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT role_name FROM roles')
-        roles = cursor.fetchall()
-        return [role[0] for role in roles][:-1]
 
 
 def get_approvers_for_role(user_role):
@@ -130,24 +124,30 @@ async def add_order(car_id: int, service: str, user_id: int):
     """
     Добавляет заказ в таблицу orders.
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    with get_db_connection() as conn:
+        try:
+            cursor = conn.cursor()
+            # Вставляем заказ в таблицу
+            cursor.execute("""
+                INSERT INTO orders (car_id, service, user_id)
+                VALUES (?, ?, ?)
+            """, (car_id, service, user_id))
 
-    try:
-        # Вставляем заказ в таблицу
-        cursor.execute("""
-            INSERT INTO orders (car_id, service, user_id)
-            VALUES (?, ?, ?)
-        """, (car_id, service, user_id))
+            # Сохраняем изменения
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Ошибка при добавлении заказа: {e}")
+            return False
 
-        # Сохраняем изменения
-        conn.commit()
-        return True
-    except Exception as e:
-        print(f"Ошибка при добавлении заказа: {e}")
-        return False
-    finally:
-        conn.close()
+
+def get_orders_by_worker(worker_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT car_brand, car_model, license_plate, vin_code FROM orders "
+                       "WHERE worker_id = ?", (worker_id,))
+        result = cursor.fetchall()[0]
+        return [car[0] for car in result]
 
 
 async def get_user_cars(user_id: int):
@@ -176,7 +176,8 @@ async def get_user_cars(user_id: int):
 
 
 # Пример использования
+
 if __name__ == '__main__':
-    add_user(123456789, 'Иван', 'Иванов', '+79123456789', 'client')
+    add_user(123456789, 'Иван', 'Иванов', '+79123456789')
     user1 = get_user_by_telegram_id(123456789)
     print(user1)

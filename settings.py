@@ -8,8 +8,11 @@ from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
 
+
 bot = Bot(
     token=os.getenv("BOT_TOKEN"),
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 
+
+USER_ROLES = ['worker', 'admin', 'supervisor']

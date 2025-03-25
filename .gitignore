@@ -1,5 +1,6 @@
 .env
 .venv_cashtask
 .idea
-databases/cashtask.db
+databases/cash_task.db
 __pycache__
+praktika.py

@@ -12,17 +12,17 @@ from database.state_models import OrderStates
 from keyboards.admins import get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard
 
 load_dotenv(find_dotenv())
-admin_router = Router()
+admins = Router()
 
 
-@admin_router.message(F.text == os.getenv("ADMIN_PASS"))
+@admins.message(F.text == os.getenv("ADMIN_PASS"))
 async def admin_password(message: types.Message):
     await bot.send_message()
     await message.answer("вижу ты знаешь пароль администратора")
 
 
 # Старт опросника
-@admin_router.message(Command("order"))
+@admins.message(Command("order"))
 async def start_order(message: types.Message, state: FSMContext):
 
     user_id = message.from_user.id
@@ -37,7 +37,7 @@ async def start_order(message: types.Message, state: FSMContext):
 
 
 # Обработка выбора автомобиля
-@admin_router.callback_query(OrderStates.waiting_for_car, lambda c: c.data.startswith("car_"))
+@admins.callback_query(OrderStates.waiting_for_car, lambda c: c.data.startswith("car_"))
 async def process_car_selection(callback_query: types.CallbackQuery, state: FSMContext):
 
     car_id = int(callback_query.data.split("_")[1])
@@ -48,7 +48,7 @@ async def process_car_selection(callback_query: types.CallbackQuery, state: FSMC
 
 
 # Обработка выбора услуги
-@admin_router.callback_query(OrderStates.waiting_for_service, lambda c: c.data.startswith("service_"))
+@admins.callback_query(OrderStates.waiting_for_service, lambda c: c.data.startswith("service_"))
 async def process_service_selection(callback_query: types.CallbackQuery, state: FSMContext):
     service = callback_query.data.split("_")[1]
     await state.update_data(service=service)
@@ -68,7 +68,7 @@ async def process_service_selection(callback_query: types.CallbackQuery, state: 
 
 
 # Обработка подтверждения
-@admin_router.callback_query(OrderStates.waiting_for_confirmation, F.data in ["confirm", "back", "cancel"])
+@admins.callback_query(F.data == ["confirm", "back", "cancel"], OrderStates.waiting_for_confirmation)
 async def process_confirmation(callback_query: types.CallbackQuery, state: FSMContext):
     if callback_query.data == "confirm":
         data = await state.get_data()
@@ -88,9 +88,9 @@ async def process_confirmation(callback_query: types.CallbackQuery, state: FSMCo
 
 
 # Обработка возврата на предыдущий шаг
-@admin_router.callback_query(F.data == "back",
-                             or_f(OrderStates.waiting_for_service, OrderStates.waiting_for_confirmation)
-                             )
+@admins.callback_query(F.data == "back",
+                       or_f(OrderStates.waiting_for_service, OrderStates.waiting_for_confirmation)
+                       )
 async def process_back(callback_query: types.CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
 
@@ -107,7 +107,7 @@ async def process_back(callback_query: types.CallbackQuery, state: FSMContext):
 
 
 # Обработка отмены
-@admin_router.callback_query(F.data == "cancel")
+@admins.callback_query(F.data == "cancel")
 async def process_cancel(callback_query: types.CallbackQuery, state: FSMContext):
     await callback_query.message.answer("Заказ отменен.")
     await state.clear()
