@@ -15,6 +15,11 @@ class UserRegistrationObject(StatesGroup):
     waiting_for_confirmation = State()
 
 
+class FinanceStates(StatesGroup):
+    investments = State()
+    from_the_car = State()
+
+
 class UserCookies:
     _lang_cache = {}
 

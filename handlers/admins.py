@@ -1,29 +1,71 @@
 import os
 
-from aiogram import Router, types, F
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from aiogram.filters import or_f
+from aiogram.types import CallbackQuery, Message
 from dotenv import find_dotenv, load_dotenv
 
 from settings import bot
-from database.db_crud import add_order, get_user_cars
-from database.state_models import OrderStates
-from keyboards.admins import get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard
+from database.db_crud import add_order, get_user_cars, add_finance_record
+from database.state_models import OrderStates, FinanceStates
+from keyboards.admins import (get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard,
+                              get_finance_income_kb, get_finance_expense_kb)
 
 load_dotenv(find_dotenv())
 admins = Router()
 
 
 @admins.message(F.text == os.getenv("ADMIN_PASS"))
-async def admin_password(message: types.Message):
+async def admin_password(message: Message):
     await bot.send_message()
     await message.answer("вижу ты знаешь пароль администратора")
 
 
+@admins.callback_query(F.data == "income")
+async def finance_income(callback_query: CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer("Выберите тип дохода!", reply_markup=get_finance_income_kb())
+
+
+@admins.callback_query(F.data == "expense")
+async def finance_income(callback_query: CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer("Выберите тип расхода!", reply_markup=get_finance_expense_kb())
+
+
+@admins.callback_query(F.data == "from_the_car")
+async def income_from_the_car(callback_query: CallbackQuery):
+    await callback_query.answer()
+
+
+@admins.callback_query(F.data == "investments")
+async def income_from_the_car(callback_query: CallbackQuery, state: FSMContext):
+    await state.update_data(type_finance=callback_query.data)
+    await state.set_state(FinanceStates.investments)
+    await callback_query.answer()
+    await callback_query.message.answer("Введите сумму и \nописание с новой строки:")
+
+
+@admins.message(FinanceStates.investments)
+async def wait_sum(message: Message, state: FSMContext):
+    state_data = await state.get_data()
+    amount_type = state_data["type_finance"]
+    data = message.text.split("\n")
+    amount = data[0]
+    description = data[1]
+    admin_id = message.from_user.id
+    add_finance_record(amount=amount, description=description, amount_type=amount_type, admin_id=admin_id)
+
+    print(f"Сумма инвестиции: {amount}")
+    await message.answer(f"Сумма {amount} сохранена!")
+    await state.clear()
+
+
 # Старт опросника
 @admins.message(Command("order"))
-async def start_order(message: types.Message, state: FSMContext):
+async def start_order(message: Message, state: FSMContext):
 
     user_id = message.from_user.id
     cars = await get_user_cars(user_id)
@@ -38,7 +80,7 @@ async def start_order(message: types.Message, state: FSMContext):
 
 # Обработка выбора автомобиля
 @admins.callback_query(OrderStates.waiting_for_car, lambda c: c.data.startswith("car_"))
-async def process_car_selection(callback_query: types.CallbackQuery, state: FSMContext):
+async def process_car_selection(callback_query: CallbackQuery, state: FSMContext):
 
     car_id = int(callback_query.data.split("_")[1])
 
@@ -49,7 +91,7 @@ async def process_car_selection(callback_query: types.CallbackQuery, state: FSMC
 
 # Обработка выбора услуги
 @admins.callback_query(OrderStates.waiting_for_service, lambda c: c.data.startswith("service_"))
-async def process_service_selection(callback_query: types.CallbackQuery, state: FSMContext):
+async def process_service_selection(callback_query: CallbackQuery, state: FSMContext):
     service = callback_query.data.split("_")[1]
     await state.update_data(service=service)
 
@@ -69,7 +111,7 @@ async def process_service_selection(callback_query: types.CallbackQuery, state: 
 
 # Обработка подтверждения
 @admins.callback_query(F.data == ["confirm", "back", "cancel"], OrderStates.waiting_for_confirmation)
-async def process_confirmation(callback_query: types.CallbackQuery, state: FSMContext):
+async def process_confirmation(callback_query: CallbackQuery, state: FSMContext):
     if callback_query.data == "confirm":
         data = await state.get_data()
         car_id = data["car_id"]
@@ -91,7 +133,7 @@ async def process_confirmation(callback_query: types.CallbackQuery, state: FSMCo
 @admins.callback_query(F.data == "back",
                        or_f(OrderStates.waiting_for_service, OrderStates.waiting_for_confirmation)
                        )
-async def process_back(callback_query: types.CallbackQuery, state: FSMContext):
+async def process_back(callback_query: CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
 
     if current_state == OrderStates.waiting_for_service:
@@ -108,6 +150,6 @@ async def process_back(callback_query: types.CallbackQuery, state: FSMContext):
 
 # Обработка отмены
 @admins.callback_query(F.data == "cancel")
-async def process_cancel(callback_query: types.CallbackQuery, state: FSMContext):
+async def process_cancel(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.answer("Заказ отменен.")
     await state.clear()

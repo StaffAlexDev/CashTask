@@ -8,6 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from database.db_crud import get_user_by_telegram_id
 from database.state_models import UserCookies, UserRegistrationObject
+from keyboards.admins import get_type_finance_kb
 from keyboards.general import roles_kb, menu_by_role
 
 commands = Router()
@@ -38,7 +39,7 @@ async def command_start(message: Message, state: FSMContext):
 
 @commands.message(Command('finance'))
 async def finance(message: Message):
-    await message.answer('I see finance button!')
+    await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb())
 
 
 @commands.message(Command("languages"))

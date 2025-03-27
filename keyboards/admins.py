@@ -11,6 +11,27 @@ start_admin_kb = InlineKeyboardMarkup(inline_keyboard=[[button1, button2]])
 SERVICES = ["Замена масла", "Замена фильтров", "Диагностика"]
 
 
+def get_type_finance_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Приход", callback_data="income"))
+    builder.add(InlineKeyboardButton(text="Расход", callback_data="expense"))
+    return builder.as_markup()
+
+
+def get_finance_income_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="От машины", callback_data="from_the_car"))
+    builder.add(InlineKeyboardButton(text="Инвестиция", callback_data="investments"))
+    return builder.as_markup()
+
+
+def get_finance_expense_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="На машину", callback_data="per_car"))
+    builder.add(InlineKeyboardButton(text="Общие", callback_data="general"))
+    return builder.as_markup()
+
+
 # Клавиатура для возврата
 def get_back_keyboard():
     builder = InlineKeyboardBuilder()

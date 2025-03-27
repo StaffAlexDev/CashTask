@@ -118,6 +118,7 @@ def add_finance_record(amount, description, amount_type, admin_id, car_id=None):
             (amount, description, amount_type, admin_id, car_id)
         )
         conn.commit()
+        print(f"Coхранил: {amount}, {description}, {amount_type}, {admin_id}")
 
 
 async def add_order(car_id: int, service: str, user_id: int):

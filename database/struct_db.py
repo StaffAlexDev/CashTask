@@ -78,14 +78,14 @@ def create_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS finances (
             finance_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID записи
-            amount REAL NOT NULL,                         -- Сумма (доход или расход)
+            amount REAL NOT NULL,                          -- Сумма (доход или расход)
             description TEXT,                              -- Описание (например, "Покупка фильтров")
             type TEXT NOT NULL,                            -- Тип: income (доход), expense (расход)
-            admin_id INTEGER,                              -- ID админа, который внес запись
-            car_id INTEGER,                                -- ID автомобиля, к которому относится запись
+            admin_id INTEGER NOT NULL,                     -- ID админа, который внес запись
+            order_id INTEGER,                                -- ID автомобиля, к которому относится запись
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата записи
             FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE SET NULL,  -- Привязка к админу
-            FOREIGN KEY (car_id) REFERENCES cars(car_id) ON DELETE SET NULL       -- Привязка к автомобилю
+            FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE SET NULL       -- Привязка к order
         );
     """)
 
