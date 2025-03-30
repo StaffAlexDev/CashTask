@@ -20,6 +20,10 @@ class FinanceStates(StatesGroup):
     from_the_car = State()
 
 
+class TransactionState(StatesGroup):
+    waiting_for_photo = State()
+
+
 class UserCookies:
     _lang_cache = {}
 

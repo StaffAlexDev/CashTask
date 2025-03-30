@@ -2,23 +2,18 @@ from enum import Enum
 from database.struct_db import get_db_connection
 
 
-class FinanceType(Enum):
-    INCOME = "income"
-    EXPENSE = "expense"
-
-
 # Добавление пользователя
-def add_user(telegram_id, first_name, last_name, role):
+def add_employees(telegram_id: int, first_name: str, last_name: str, role: str):
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        sql = 'SELECT * FROM users WHERE telegram_id = ?'
+        sql = 'SELECT * FROM employees WHERE telegram_id = ?'
         cursor.execute(sql, (telegram_id,))
         if cursor.fetchone() is not None:
             print("Пользователь уже существует")
             return
         cursor.execute(
-            'INSERT INTO users (telegram_id, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO employees (telegram_id, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)',
             (telegram_id, first_name, last_name, role)
         )
         conn.commit()
@@ -105,7 +100,7 @@ def add_car(user_id, car_brand, car_model, car_year, license_plate):
 
 
 # Добавление финансовой записи
-def add_finance_record(amount, description, amount_type, admin_id, car_id=None):
+def add_finance_by_car(amount: int, amount_type: str, description: str, admin_id: int, car_id=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         if car_id is not None:
@@ -114,8 +109,19 @@ def add_finance_record(amount, description, amount_type, admin_id, car_id=None):
                 print("Автомобиль не найден")
                 return
         cursor.execute(
-            'INSERT INTO finances (amount, description, type, admin_id, car_id) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO finances_by_car (amount, description, type, admin_id, car_id) VALUES (?, ?, ?, ?, ?)',
             (amount, description, amount_type, admin_id, car_id)
+        )
+        conn.commit()
+        print(f"Coхранил: {amount}, {description}, {amount_type}, {admin_id}")
+
+
+def add_finance_by_general(amount: int, amount_type: str, description: str, admin_id: int):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO finances_general (amount, type, description, admin_id) VALUES (?, ?, ?, ?, ?)',
+            (amount, description, amount_type, admin_id)
         )
         conn.commit()
         print(f"Coхранил: {amount}, {description}, {amount_type}, {admin_id}")
@@ -142,7 +148,7 @@ async def add_order(car_id: int, service: str, user_id: int):
             return False
 
 
-def get_orders_by_worker(worker_id):
+def get_orders_by_worker(worker_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT car_brand, car_model, license_plate, vin_code FROM orders "
@@ -176,9 +182,14 @@ async def get_user_cars(user_id: int):
         conn.close()
 
 
+def get_orders_in_work():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+
 # Пример использования
 
 if __name__ == '__main__':
-    add_user(123456789, 'Иван', 'Иванов', '+79123456789')
+    add_employees(123456789, 'Иван', 'Иванов', '+79123456789')
     user1 = get_user_by_telegram_id(123456789)
     print(user1)

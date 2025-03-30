@@ -8,10 +8,10 @@ from aiogram.types import CallbackQuery, Message
 from dotenv import find_dotenv, load_dotenv
 
 from settings import bot
-from database.db_crud import add_order, get_user_cars, add_finance_record
+from database.db_crud import add_order, get_user_cars, add_finance_by_car
 from database.state_models import OrderStates, FinanceStates
 from keyboards.admins import (get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard,
-                              get_finance_income_kb, get_finance_expense_kb)
+                              get_finance_kb)
 
 load_dotenv(find_dotenv())
 admins = Router()
@@ -23,26 +23,22 @@ async def admin_password(message: Message):
     await message.answer("вижу ты знаешь пароль администратора")
 
 
-@admins.callback_query(F.data == "income")
-async def finance_income(callback_query: CallbackQuery):
+@admins.callback_query(F.data.startswith("finance_"))
+async def finance_income(callback_query: CallbackQuery, state: FSMContext):
+    type_finance = callback_query.data.split("_")[1]
+    await state.update_data(type_finance=type_finance)
     await callback_query.answer()
-    await callback_query.message.answer("Выберите тип дохода!", reply_markup=get_finance_income_kb())
+    await callback_query.message.edit_text("Выберите тип дохода!", reply_markup=get_finance_kb())
 
 
-@admins.callback_query(F.data == "expense")
-async def finance_income(callback_query: CallbackQuery):
-    await callback_query.answer()
-    await callback_query.message.answer("Выберите тип расхода!", reply_markup=get_finance_expense_kb())
-
-
-@admins.callback_query(F.data == "from_the_car")
+@admins.callback_query(F.data == "from_car")
 async def income_from_the_car(callback_query: CallbackQuery):
     await callback_query.answer()
 
 
-@admins.callback_query(F.data == "investments")
+@admins.callback_query(F.data == "general")
 async def income_from_the_car(callback_query: CallbackQuery, state: FSMContext):
-    await state.update_data(type_finance=callback_query.data)
+    await state.update_data(type_investments=callback_query.data)
     await state.set_state(FinanceStates.investments)
     await callback_query.answer()
     await callback_query.message.answer("Введите сумму и \nописание с новой строки:")
@@ -51,12 +47,13 @@ async def income_from_the_car(callback_query: CallbackQuery, state: FSMContext):
 @admins.message(FinanceStates.investments)
 async def wait_sum(message: Message, state: FSMContext):
     state_data = await state.get_data()
-    amount_type = state_data["type_finance"]
+    type_finance = state_data["type_finance"]
+    type_investments = state_data["type_investments"]
     data = message.text.split("\n")
     amount = data[0]
     description = data[1]
     admin_id = message.from_user.id
-    add_finance_record(amount=amount, description=description, amount_type=amount_type, admin_id=admin_id)
+    add_finance_by_car(amount=amount, amount_type=type_finance, description=description,  admin_id=admin_id)
 
     print(f"Сумма инвестиции: {amount}")
     await message.answer(f"Сумма {amount} сохранена!")
@@ -79,7 +76,7 @@ async def start_order(message: Message, state: FSMContext):
 
 
 # Обработка выбора автомобиля
-@admins.callback_query(OrderStates.waiting_for_car, lambda c: c.data.startswith("car_"))
+@admins.callback_query(OrderStates.waiting_for_car, F.data.startswith("car_"))
 async def process_car_selection(callback_query: CallbackQuery, state: FSMContext):
 
     car_id = int(callback_query.data.split("_")[1])
@@ -90,7 +87,7 @@ async def process_car_selection(callback_query: CallbackQuery, state: FSMContext
 
 
 # Обработка выбора услуги
-@admins.callback_query(OrderStates.waiting_for_service, lambda c: c.data.startswith("service_"))
+@admins.callback_query(OrderStates.waiting_for_service, F.data.startswith("service_"))
 async def process_service_selection(callback_query: CallbackQuery, state: FSMContext):
     service = callback_query.data.split("_")[1]
     await state.update_data(service=service)

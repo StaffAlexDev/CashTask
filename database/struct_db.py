@@ -55,7 +55,7 @@ def create_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата создания заказа
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата обновления заказа
             FOREIGN KEY (car_id) REFERENCES cars(car_id) ON DELETE CASCADE,
-            FOREIGN KEY (worker_id) REFERENCES users(user_id) ON DELETE SET NULL
+            FOREIGN KEY (worker_id) REFERENCES users(telegram_id) ON DELETE SET NULL
         );
     """)
 
@@ -66,29 +66,41 @@ def create_tables():
             assigned_to INTEGER,                        -- ID сотрудника, которому назначена задача
             assigned_by INTEGER,                        -- ID админа или staff, который создал задачу
             description TEXT,                           -- Описание задачи
-            status TEXT DEFAULT 'new',                  -- Статус задачи: new, in_progress, done
+            status TEXT DEFAULT 'in_progress',          -- Статус задачи: in_progress, done
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата создания задачи
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата обновления задачи
-            FOREIGN KEY (assigned_to) REFERENCES users(user_id) ON DELETE CASCADE,
-            FOREIGN KEY (assigned_by) REFERENCES users(user_id) ON DELETE SET NULL
+            FOREIGN KEY (assigned_to) REFERENCES users(telegram_id) ON DELETE CASCADE,
+            FOREIGN KEY (assigned_by) REFERENCES users(telegram_id) ON DELETE SET NULL
         );
     """)
 
     # Таблица финансов
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS finances (
+        CREATE TABLE IF NOT EXISTS finances_by_car (
             finance_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID записи
             amount REAL NOT NULL,                          -- Сумма (доход или расход)
-            description TEXT,                              -- Описание (например, "Покупка фильтров")
             type TEXT NOT NULL,                            -- Тип: income (доход), expense (расход)
+            description TEXT,                              -- Описание (например, "Покупка фильтров")
+            photo TEXT,                                    -- ссылка на фото чека или товара
             admin_id INTEGER NOT NULL,                     -- ID админа, который внес запись
             order_id INTEGER,                                -- ID автомобиля, к которому относится запись
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата записи
-            FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE SET NULL,  -- Привязка к админу
+            FOREIGN KEY (admin_id) REFERENCES users(telegram_id) ON DELETE SET NULL,  -- Привязка к админу
             FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE SET NULL       -- Привязка к order
         );
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS finances_general (
+        finance_id INTEGER PRIMARY KEY AUTOINCREMENT,      -- Уникальный ID записи
+            amount REAL NOT NULL,                          -- Сумма (доход или расход)
+            type TEXT NOT NULL,                            -- Тип: income (доход), expense (расход)
+            description TEXT,                              -- Описание (например, "Покупка фильтров")
+            photo TEXT,                                    -- ссылка на фото чека или товара
+            admin_id INTEGER NOT NULL,                     -- ID админа, который внес запись
+            FOREIGN KEY (admin_id) REFERENCES users(telegram_id) ON DELETE SET NULL  -- Привязка к админу
+        );
+    """)
     conn.commit()
     conn.close()
 

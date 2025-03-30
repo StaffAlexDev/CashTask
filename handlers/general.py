@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database.db_crud import get_user_by_telegram_id, get_approvers_for_role, approve_user, add_user
+from database.db_crud import get_user_by_telegram_id, get_approvers_for_role, approve_user, add_employees
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.general import roles_kb, get_access_confirmation, menu_by_role
 from settings import bot
@@ -50,10 +50,10 @@ async def get_accept_by_user(callback_query: CallbackQuery, state: FSMContext):
     # Добавляем пользователя в БД
     senior_telegram_id = callback_query.from_user.id
 
-    add_user(new_user.get("telegram_id"),
-             new_user.get("first_name"),
-             new_user.get("last_name"),
-             user_role)
+    # add_employees(new_user.get("telegram_id"),
+    #          new_user.get("first_name"),
+    #          new_user.get("last_name"),
+    #          user_role)
     approve_user(senior_telegram_id, new_user.get("telegram_id"))
 
     await callback_query.answer("Пользователь успешно подтверждён!")
