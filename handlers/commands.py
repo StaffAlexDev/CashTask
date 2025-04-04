@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database.db_crud import get_user_by_telegram_id
+from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.admins import get_type_finance_kb
 from keyboards.general import roles_kb, menu_by_role
@@ -17,19 +17,19 @@ commands = Router()
 @commands.message(Command("start"))
 async def command_start(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    user_db = get_user_by_telegram_id(user_id)
+    user_db = get_employee_by_telegram_id(user_id)
     user = UserCookies(user_id)
     lang = user.get_lang()
     print(user_db)
 
     if user_db is None:
         await message.answer(lang.get("unknown_user").get("greetings"), reply_markup=roles_kb())
-        new_user = {
+        new_worker = {
             "telegram_id": message.from_user.id,
             "first_name": message.from_user.first_name,
             "last_name": message.from_user.last_name,
         }
-        await state.update_data(new_user=new_user)
+        await state.update_data(new_worker=new_worker)
         await state.set_state(UserRegistrationObject.waiting_for_confirmation)
 
     else:
@@ -39,7 +39,9 @@ async def command_start(message: Message, state: FSMContext):
 
 @commands.message(Command('finance'))
 async def finance(message: Message):
-    await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb())
+    user_id = message.from_user.id
+    role = get_role_by_telegram_id(user_id)
+    await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb(role))
 
 
 @commands.message(Command("languages"))

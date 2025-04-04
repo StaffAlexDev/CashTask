@@ -11,10 +11,13 @@ start_admin_kb = InlineKeyboardMarkup(inline_keyboard=[[button1, button2]])
 SERVICES = ["Замена масла", "Замена фильтров", "Диагностика"]
 
 
-def get_type_finance_kb():
+def get_type_finance_kb(role):
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="Приход", callback_data="finance_income"))
     builder.add(InlineKeyboardButton(text="Расход", callback_data="finance_expense"))
+
+    if role == "supervisor":
+        builder.add(InlineKeyboardButton(text="Отчет", callback_data="finance_report"))
     return builder.as_markup()
 
 

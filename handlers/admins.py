@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 from dotenv import find_dotenv, load_dotenv
 
 from settings import bot
-from database.db_crud import add_order, get_user_cars, add_finance_by_car
+from database.db_crud import add_order, get_client_cars, add_finance_by_car
 from database.state_models import OrderStates, FinanceStates
 from keyboards.admins import (get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard,
                               get_finance_kb)
@@ -26,9 +26,12 @@ async def admin_password(message: Message):
 @admins.callback_query(F.data.startswith("finance_"))
 async def finance_income(callback_query: CallbackQuery, state: FSMContext):
     type_finance = callback_query.data.split("_")[1]
-    await state.update_data(type_finance=type_finance)
+    if type_finance == "report":
+        pass
+    else:
+        await state.update_data(type_finance=type_finance)
+        await callback_query.message.edit_text("Выберите тип дохода!", reply_markup=get_finance_kb())
     await callback_query.answer()
-    await callback_query.message.edit_text("Выберите тип дохода!", reply_markup=get_finance_kb())
 
 
 @admins.callback_query(F.data == "from_car")
@@ -50,10 +53,10 @@ async def wait_sum(message: Message, state: FSMContext):
     type_finance = state_data["type_finance"]
     type_investments = state_data["type_investments"]
     data = message.text.split("\n")
-    amount = data[0]
+    amount = int(data[0])
     description = data[1]
     admin_id = message.from_user.id
-    add_finance_by_car(amount=amount, amount_type=type_finance, description=description,  admin_id=admin_id)
+    add_finance_by_car(amount=amount, finance_type=type_finance, description=description,  admin_id=admin_id)
 
     print(f"Сумма инвестиции: {amount}")
     await message.answer(f"Сумма {amount} сохранена!")
@@ -65,7 +68,7 @@ async def wait_sum(message: Message, state: FSMContext):
 async def start_order(message: Message, state: FSMContext):
 
     user_id = message.from_user.id
-    cars = await get_user_cars(user_id)
+    cars = await get_client_cars(user_id)
 
     if not cars:
         await message.answer("У вас нет зарегистрированных автомобилей.")
@@ -136,7 +139,7 @@ async def process_back(callback_query: CallbackQuery, state: FSMContext):
     if current_state == OrderStates.waiting_for_service:
         # Возвращаемся к выбору автомобиля
         user_id = callback_query.from_user.id
-        cars = await get_user_cars(user_id)
+        cars = await get_client_cars(user_id)
         await callback_query.message.answer("Выберите автомобиль:", reply_markup=get_cars_keyboard(cars))
         await state.set_state(OrderStates.waiting_for_car)
     elif current_state == OrderStates.waiting_for_confirmation:

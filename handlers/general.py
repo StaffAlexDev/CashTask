@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database.db_crud import get_user_by_telegram_id, get_approvers_for_role, approve_user, add_employees
+from database.db_crud import get_employee_by_telegram_id, add_employee_approval, get_approved_employees, add_employee
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.general import roles_kb, get_access_confirmation, menu_by_role
 from settings import bot
@@ -26,7 +26,7 @@ async def choice_role(callback_query: CallbackQuery, state: FSMContext):
     await state.update_data(user_role=user_role)
 
     # Уходит запрос на должность выше
-    role_list = get_approvers_for_role(callback_query.data[5:])
+    role_list = get_approved_employees(callback_query.data[5:])
     for telegram_id in role_list:
         await bot.send_message(chat_id=telegram_id,
                                text=message,
@@ -54,7 +54,7 @@ async def get_accept_by_user(callback_query: CallbackQuery, state: FSMContext):
     #          new_user.get("first_name"),
     #          new_user.get("last_name"),
     #          user_role)
-    approve_user(senior_telegram_id, new_user.get("telegram_id"))
+    add_employee_approval(senior_telegram_id, new_user.get("telegram_id"))
 
     await callback_query.answer("Пользователь успешно подтверждён!")
     await bot.send_message(chat_id=new_user.get("telegram_id"),

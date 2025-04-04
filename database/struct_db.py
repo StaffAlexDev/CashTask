@@ -7,40 +7,52 @@ def create_tables():
 
     # Таблица с сотрудников
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS employees (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID пользователя
             telegram_id INTEGER UNIQUE NOT NULL,        -- ID пользователя в Telegram
             first_name TEXT,                            -- Имя пользователя
             last_name TEXT,                             -- Фамилия пользователя
             language TEXT,                              -- Выбранный язык
             phone_number TEXT,                          -- Номер телефона
-            role TEXT,                                  -- Роль (ссылка на таблицу roles)
+            role TEXT,                                  -- Роль
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
         );
     """)
-
+    # Таблица кто кого подтвердил в сотрудниках
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS approvals (
-        approval_id INTEGER PRIMARY KEY AUTOINCREMENT,  
-        approver_id INTEGER NOT NULL,  -- Кто подтвердил (telegram_id)
-        approved_id INTEGER NOT NULL,  -- Кого подтвердили (telegram_id)
-        approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Время подтверждения
-        FOREIGN KEY (approver_id) REFERENCES users(telegram_id) ON DELETE CASCADE,
-        FOREIGN KEY (approved_id) REFERENCES users(telegram_id) ON DELETE CASCADE
-    );
-    """)
+        CREATE TABLE IF NOT EXISTS employee_approvals (
+            approval_id INTEGER PRIMARY KEY AUTOINCREMENT,  
+            approver_id INTEGER NOT NULL,  -- Кто подтвердил (telegram_id)
+            approved_id INTEGER NOT NULL,  -- Кого подтвердили (telegram_id)
+            approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Время подтверждения
+            FOREIGN KEY (approver_id) REFERENCES employees(telegram_id) ON DELETE CASCADE,
+            FOREIGN KEY (approved_id) REFERENCES employees(telegram_id) ON DELETE CASCADE
+        );
+        """)
+
+    # Таблица с клиентов
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS clients (
+                clients_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID пользователя
+                telegram_id INTEGER UNIQUE,                 -- ID пользователя в Telegram
+                first_name TEXT,                            -- Имя пользователя
+                last_name TEXT,                             -- Фамилия пользователя
+                phone_number TEXT NOT NULL,                          -- Номер телефона
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
+            );
+        """)
 
     # Таблица автомобилей
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cars (
             car_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID машины
-            user_id INTEGER,                           -- ID владельца машины (клиента)
+            clients_id INTEGER,                           -- ID владельца машины (клиента)
             car_brand TEXT,                            -- Марка машины
             car_model TEXT,                            -- Модель машины
             car_year INTEGER,                          -- Год выпуска
             license_plate TEXT UNIQUE,                 -- Номерной знак
             vin_code TEXT UNIQUE,                      -- VIN
-            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            FOREIGN KEY (clients_id) REFERENCES clients(clients_id) ON DELETE CASCADE
         );
     """)
 
@@ -55,7 +67,7 @@ def create_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата создания заказа
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата обновления заказа
             FOREIGN KEY (car_id) REFERENCES cars(car_id) ON DELETE CASCADE,
-            FOREIGN KEY (worker_id) REFERENCES users(telegram_id) ON DELETE SET NULL
+            FOREIGN KEY (worker_id) REFERENCES employees(telegram_id) ON DELETE SET NULL
         );
     """)
 
@@ -69,8 +81,8 @@ def create_tables():
             status TEXT DEFAULT 'in_progress',          -- Статус задачи: in_progress, done
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата создания задачи
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата обновления задачи
-            FOREIGN KEY (assigned_to) REFERENCES users(telegram_id) ON DELETE CASCADE,
-            FOREIGN KEY (assigned_by) REFERENCES users(telegram_id) ON DELETE SET NULL
+            FOREIGN KEY (assigned_to) REFERENCES employees(telegram_id) ON DELETE CASCADE,
+            FOREIGN KEY (assigned_by) REFERENCES employees(telegram_id) ON DELETE SET NULL
         );
     """)
 
@@ -82,10 +94,10 @@ def create_tables():
             type TEXT NOT NULL,                            -- Тип: income (доход), expense (расход)
             description TEXT,                              -- Описание (например, "Покупка фильтров")
             photo TEXT,                                    -- ссылка на фото чека или товара
-            admin_id INTEGER NOT NULL,                     -- ID админа, который внес запись
+            admin_id INTEGER,                              -- ID админа, который внес запись
             order_id INTEGER,                                -- ID автомобиля, к которому относится запись
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата записи
-            FOREIGN KEY (admin_id) REFERENCES users(telegram_id) ON DELETE SET NULL,  -- Привязка к админу
+            FOREIGN KEY (admin_id) REFERENCES employees(telegram_id) ON DELETE SET NULL,  -- Привязка к админу
             FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE SET NULL       -- Привязка к order
         );
     """)
@@ -98,19 +110,21 @@ def create_tables():
             description TEXT,                              -- Описание (например, "Покупка фильтров")
             photo TEXT,                                    -- ссылка на фото чека или товара
             admin_id INTEGER NOT NULL,                     -- ID админа, который внес запись
-            FOREIGN KEY (admin_id) REFERENCES users(telegram_id) ON DELETE SET NULL  -- Привязка к админу
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Дата записи
+            FOREIGN KEY (admin_id) REFERENCES employees(telegram_id) ON DELETE SET NULL  -- Привязка к админу
         );
     """)
+
+    # Индексы
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_telegram_id ON employees(telegram_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clients_telegram_id ON clients(telegram_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cars_clients_id ON cars(clients_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_car_id ON orders(car_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_worker_id ON orders(worker_id);")
+
     conn.commit()
     conn.close()
 
 
-# if __name__ == "__main__":
-#     create_tables()
-#     conn = get_db_connection()
-#     cursor = conn.cursor()
-#     cursor.execute("INSERT INTO user_settings (user_id, languages) VALUES (?, ?) ", ("202126961", "ru"))
-#     cursor.execute("SELECT * FROM user_settings WHERE user_id=?", ("202126961",))
-#     data = cursor.fetchone()
-#     print(data["user_id"])
-#     print(data["languages"])
+if __name__ == "__main__":
+    pass

@@ -1,42 +1,48 @@
-import os
-import re
+from datetime import datetime
+from pathlib import Path
 
 from aiogram import Router, F
 from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from database.state_models import TransactionState
+from database.state_models import FinanceStates
+from settings import INVOICE_PATTERN
+from utils import get_month_year_folder
 
-PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "..", "photos")
 chat = Router()
 
 
 @chat.message(F.chat.type.in_(ChatType.GROUP), F.text.as_("text"))
 async def handle_group_messages(message: Message, state: FSMContext):
-    pattern = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
     text = message.text
-    match = pattern.match(text)
-    if not match:
-        await message.reply("Вы отправили некорректную запись!\nШаблон:\n"
-                            "сумма приход/расход, описание")
-    else:
+    match = INVOICE_PATTERN.match(text)
+
+    if match:
+        amount = int(text.split()[0])
+        await state.update_data(amount=amount)
+        await state.set_state(FinanceStates.waiting_for_photo)
         await message.answer("✅ Шаблон верный! Теперь отправьте фото или несколько фото.")
-        await state.set_state(TransactionState.waiting_for_photo)
 
 
-@chat.message(TransactionState.waiting_for_photo, F.photo)
+@chat.message(F.chat.type.in_(ChatType.GROUP), FinanceStates.waiting_for_photo, F.photo)
 async def caught_photo(message: Message, state: FSMContext):
-    # Создаем папку, если её нет
-    os.makedirs(PHOTOS_DIR, exist_ok=True)
+    try:
+        folder_path = get_month_year_folder()
 
-    photo_id = message.photo[-1].file_id
-    file_info = await message.bot.get_file(photo_id)
-    file_path = file_info.file_path
+        photo = message.photo[-1]
+        file_info = await message.bot.get_file(photo.file_id)
 
-    # Сохраняем фото
-    save_path = os.path.join(PHOTOS_DIR, f"{photo_id}.jpg")
-    await message.bot.download_file(file_path, save_path)
+        current_time = datetime.now().strftime("%m-%d_%H-%M-%S")
+        data = await state.get_data()
+        amount = data['amount']
+        save_filename = f"{current_time}_sum_{amount}.jpg"
+        save_path = Path(folder_path) / save_filename
 
-    await message.answer("📸 Фото сохранено!")
+        await message.bot.download_file(file_info.file_path, str(save_path))
+        await message.answer("📸 Фото сохранено!")
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при сохранении: {str(e)}")
+
     await state.clear()

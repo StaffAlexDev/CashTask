@@ -3,4 +3,6 @@
 .idea
 databases/cash_task.db
 __pycache__
+google_sheets.py
+telegram-bot-sheets-455420-a9a3e9682720.json
 praktika.py

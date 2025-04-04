@@ -18,9 +18,6 @@ class UserRegistrationObject(StatesGroup):
 class FinanceStates(StatesGroup):
     investments = State()
     from_the_car = State()
-
-
-class TransactionState(StatesGroup):
     waiting_for_photo = State()
 
 
