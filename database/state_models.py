@@ -3,6 +3,7 @@ from json import load
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db_settings import get_db_connection
+from settings import LANGUAGE_DIR
 
 
 class OrderStates(StatesGroup):
@@ -35,7 +36,7 @@ class UserCookies:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT OR REPLACE INTO users (telegram_id, lang)
+                    INSERT OR REPLACE INTO employees (telegram_id, lang)
                     VALUES (?, ?)
                 ''', (self.telegram_id, self.lang))
                 conn.commit()
@@ -45,7 +46,7 @@ class UserCookies:
     def get_lang(self):
         try:
             if self.lang not in self._lang_cache:
-                with open(f"languages/{self.lang}.json", encoding="utf-8") as lang_file:
+                with open(f"{LANGUAGE_DIR}/{self.lang}.json", encoding="utf-8") as lang_file:
                     self._lang_cache[self.lang] = load(lang_file)
             return self._lang_cache[self.lang]
         except Exception as e:
@@ -59,7 +60,7 @@ class UserCookies:
                 with get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        SELECT role FROM users WHERE telegram_id = ?
+                        SELECT role FROM employees WHERE telegram_id = ?
                     ''', (self.telegram_id,))
                     result = cursor.fetchone()
                     if result:
@@ -68,7 +69,7 @@ class UserCookies:
                         self.role = "user"  # Роль по умолчанию, если её нет в базе
             except Exception as e:
                 print(f"Ошибка при получении роли из базы: {e}")
-                self.role = "user"  # Роль по умолчанию в случае ошибки
+                self.role = "worker"  # Роль по умолчанию в случае ошибки
         return self.role
 
     def set_role(self, role):
@@ -78,7 +79,7 @@ class UserCookies:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT OR REPLACE INTO users (telegram_id, role)
+                    INSERT OR REPLACE INTO employees (telegram_id, role)
                     VALUES (?, ?)
                 ''', (self.telegram_id, self.role))
                 conn.commit()

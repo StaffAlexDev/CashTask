@@ -10,6 +10,7 @@ from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_i
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.admins import get_type_finance_kb
 from keyboards.general import roles_kb, menu_by_role
+from settings import LANGUAGE_DIR
 
 commands = Router()
 
@@ -46,11 +47,11 @@ async def finance(message: Message):
 
 @commands.message(Command("languages"))
 async def command_language(message: Message):
-    os.chdir("../languages")
+    os.chdir(LANGUAGE_DIR)
     files = os.listdir()
     user_id = message.from_user.id
     lang = UserCookies(user_id).get_lang()
-
+    print(lang)
     builder = InlineKeyboardBuilder()
     for file in files:
         if os.path.isfile(file):

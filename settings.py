@@ -18,6 +18,10 @@ bot = Bot(
 
 
 USER_ROLES = ['worker', 'admin', 'supervisor']
+
+INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+
 BASE_DIR = Path(__file__).parent
 PHOTOS_DIR = BASE_DIR / "receipts"
-INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+LANGUAGE_DIR = BASE_DIR / "languages"
+
