@@ -1,7 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from settings import USER_ROLES
+from config import BUTTONS_FOR_ROLE, BUTTONS, USER_ROLES
 
 
 def roles_kb():
@@ -23,23 +23,11 @@ def get_access_confirmation():
 
 
 def menu_by_role(role):
-    buttons = {
-        "car_in_work": {"text": "Авто в работе", "callback_data": "car_in_work"},
-        "accept": {"text": "Нужны материалы", "callback_data": "accept"},
-        "add_car": {"text": "Добавить авто", "callback_data": "add_car"},
-        "add_task": {"text": "Добавить задачу", "callback_data": "add_task"},
-        "what_buy": {"text": "Что купить", "callback_data": "what_buy"},
-        "reports": {"text": "Отчеты", "callback_data": "reports"}
-    }
-    btn_for_role = {
-        "worker": ["car_in_work", "accept"],
-        "admin": ["car_in_work", "accept", "add_car", "add_task", "what_buy", "income_expense"],
-        "super_admin": ["car_in_work", "what_buy", "income_expense", "reports"],
-    }
+
     builder = InlineKeyboardBuilder()
-    role_btn = btn_for_role[role]
+    role_btn = BUTTONS_FOR_ROLE[role]
     for btn in role_btn:
-        builder.button(text=buttons[btn].get("text"), callback_data=buttons[btn].get("callback_data"))
+        builder.button(text=BUTTONS[btn].get("text"), callback_data=BUTTONS[btn].get("callback_data"))
     builder.adjust(2)
     return builder.as_markup()
 

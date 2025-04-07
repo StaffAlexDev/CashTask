@@ -23,6 +23,7 @@ async def admin_password(message: Message):
     await message.answer("вижу ты знаешь пароль администратора")
 
 
+# -----------------Finances-----------------------------------
 @admins.callback_query(F.data.startswith("finance_"))
 async def finance_income(callback_query: CallbackQuery, state: FSMContext):
     type_finance = callback_query.data.split("_")[1]
@@ -51,7 +52,7 @@ async def income_from_the_car(callback_query: CallbackQuery, state: FSMContext):
 async def wait_sum(message: Message, state: FSMContext):
     state_data = await state.get_data()
     type_finance = state_data["type_finance"]
-    type_investments = state_data["type_investments"]
+    type_investments = state_data["type_investments"]  # TODO перепроверить последовательно состояния
     data = message.text.split("\n")
     amount = int(data[0])
     description = data[1]
@@ -63,8 +64,8 @@ async def wait_sum(message: Message, state: FSMContext):
     await state.clear()
 
 
-# Старт опросника
-@admins.message(Command("order"))
+# ----------------- ORDERS MENU ----------------------
+@admins.message(F.data == "new_order")
 async def start_order(message: Message, state: FSMContext):
 
     user_id = message.from_user.id

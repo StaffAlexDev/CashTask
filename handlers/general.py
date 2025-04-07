@@ -4,7 +4,6 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from database.db_crud import get_employee_by_telegram_id, add_employee_approval, get_approved_employees, add_employee
 from database.state_models import UserCookies, UserRegistrationObject

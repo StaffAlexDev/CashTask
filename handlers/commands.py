@@ -6,11 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from config import LANGUAGE_DIR
 from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.admins import get_type_finance_kb
 from keyboards.general import roles_kb, menu_by_role
-from settings import LANGUAGE_DIR
 
 commands = Router()
 
@@ -36,6 +36,13 @@ async def command_start(message: Message, state: FSMContext):
     else:
         user_role = user_db.get_role()
         await message.answer(lang.get("language").get("select_lang"), reply_markup=menu_by_role(user_role))
+
+
+@commands.message(Command('menu'))
+async def finance(message: Message):
+    user_id = message.from_user.id
+    role = get_role_by_telegram_id(user_id)
+    await message.answer('Привет', reply_markup=menu_by_role(role))
 
 
 @commands.message(Command('finance'))

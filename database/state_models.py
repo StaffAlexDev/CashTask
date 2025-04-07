@@ -3,7 +3,7 @@ from json import load
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db_settings import get_db_connection
-from settings import LANGUAGE_DIR
+from config import LANGUAGE_DIR
 
 
 class OrderStates(StatesGroup):

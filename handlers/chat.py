@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from database.state_models import FinanceStates
-from settings import INVOICE_PATTERN
+from config import INVOICE_PATTERN
 from utils import get_month_year_folder
 
 chat = Router()

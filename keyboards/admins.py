@@ -1,20 +1,12 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-button1 = InlineKeyboardButton(text="Finance", callback_data="finance")
-button2 = InlineKeyboardButton(text="Other", callback_data="other")
-
-start_admin_kb = InlineKeyboardMarkup(inline_keyboard=[[button1, button2]])
-
-
-# Список услуг (можно загружать из базы данных)
-SERVICES = ["Замена масла", "Замена фильтров", "Диагностика"]
-
 
 def get_type_finance_kb(role):
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="Приход", callback_data="finance_income"))
     builder.add(InlineKeyboardButton(text="Расход", callback_data="finance_expense"))
+    builder.add(InlineKeyboardButton(text="Топливо", callback_data="finance_fuel"))
 
     if role == "supervisor":
         builder.add(InlineKeyboardButton(text="Отчет", callback_data="finance_report"))
@@ -25,13 +17,6 @@ def get_finance_kb():
     builder = InlineKeyboardBuilder()
     builder.add(InlineKeyboardButton(text="По машине", callback_data="from_car"))
     builder.add(InlineKeyboardButton(text="Инвестиция", callback_data="general"))
-    return builder.as_markup()
-
-
-# Клавиатура для возврата
-def get_back_keyboard():
-    builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="Назад", callback_data="back"))
     return builder.as_markup()
 
 
