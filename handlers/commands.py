@@ -6,11 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import LANGUAGE_DIR
+from config import LANGUAGE_DIR, USER_ROLES
 from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.admins import get_type_finance_kb
-from keyboards.general import roles_kb, menu_by_role
+from keyboards.general import roles_kb, menu_by_role, order_menu_kb
 
 commands = Router()
 
@@ -39,17 +39,45 @@ async def command_start(message: Message, state: FSMContext):
 
 
 @commands.message(Command('menu'))
-async def finance(message: Message):
+async def command_menu(message: Message):
     user_id = message.from_user.id
     role = get_role_by_telegram_id(user_id)
-    await message.answer('Привет', reply_markup=menu_by_role(role))
+    user = UserCookies(user_id)
+    lang = user.get_lang()
+    if role is not None:
+        await message.answer('Привет', reply_markup=menu_by_role(role))
+    else:
+        await message.answer("У вас нет доступа!")
+
+
+@commands.message(Command('orders'))
+async def orders_menu(message: Message):
+    telegram_id = message.from_user.id
+    role = get_role_by_telegram_id(telegram_id)
+    if role in USER_ROLES[1:]:
+        await message.answer('Что делаем?', reply_markup=order_menu_kb(role))
+    else:
+        await message.answer("У вас нет доступа!")
+
+
+@commands.message(Command('clients'))
+async def clients_menu(message: Message):
+    telegram_id = message.from_user.id
+    role = get_role_by_telegram_id(telegram_id)
+    if role in USER_ROLES[1:]:
+        await message.answer('Что показать?', reply_markup=order_menu_kb(role))
+    else:
+        await message.answer("У вас нет доступа!")
 
 
 @commands.message(Command('finance'))
-async def finance(message: Message):
+async def finance_menu(message: Message):
     user_id = message.from_user.id
     role = get_role_by_telegram_id(user_id)
-    await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb(role))
+    if role in USER_ROLES[1:]:
+        await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb(role))
+    else:
+        await message.answer("У вас нет доступа!")
 
 
 @commands.message(Command("languages"))
@@ -57,14 +85,19 @@ async def command_language(message: Message):
     os.chdir(LANGUAGE_DIR)
     files = os.listdir()
     user_id = message.from_user.id
-    lang = UserCookies(user_id).get_lang()
-    print(lang)
-    builder = InlineKeyboardBuilder()
-    for file in files:
-        if os.path.isfile(file):
-            file_name, _ = os.path.splitext(file)
-            builder.button(text=file_name, callback_data=f"lang_{file_name}")
-    builder.adjust(2)
-    lang_kb = builder.as_markup()
+    user = get_employee_by_telegram_id(user_id)
 
-    await message.answer(lang.get("language").get("select_lang"), reply_markup=lang_kb)
+    if user is not None:
+        lang = UserCookies(user_id).get_lang()
+        print(lang)
+        builder = InlineKeyboardBuilder()
+        for file in files:
+            if os.path.isfile(file):
+                file_name, _ = os.path.splitext(file)
+                builder.button(text=file_name, callback_data=f"lang_{file_name}")
+        builder.adjust(2)
+        lang_kb = builder.as_markup()
+
+        await message.answer(lang.get("language").get("select_lang"), reply_markup=lang_kb)
+    else:
+        await message.answer("У вас нет доступа!")

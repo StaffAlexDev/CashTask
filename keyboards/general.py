@@ -23,7 +23,6 @@ def get_access_confirmation():
 
 
 def menu_by_role(role):
-
     builder = InlineKeyboardBuilder()
     role_btn = BUTTONS_FOR_ROLE[role]
     for btn in role_btn:
@@ -32,3 +31,21 @@ def menu_by_role(role):
     return builder.as_markup()
 
 
+def order_menu_kb(role):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="New order", callback_data="new_order"))
+    builder.add(InlineKeyboardButton(text="Open orders", callback_data="open_orders"))
+    if role == 'superadmin':
+        builder.add(InlineKeyboardButton(text="Completed orders", callback_data="completed_orders"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def clients_menu_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Add client", callback_data="add_client"))
+    builder.add(InlineKeyboardButton(text="Add car", callback_data="add_car"))
+    builder.add(InlineKeyboardButton(text="Clients", callback_data="all_clients"))
+    builder.add(InlineKeyboardButton(text="Cars", callback_data="all_cars"))
+    builder.adjust(2)
+    return builder.as_markup()

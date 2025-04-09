@@ -72,23 +72,23 @@ def get_approved_employees(approver_id: int):
 
 
 # ========== Clients (Клиенты) ==========
-def add_client(telegram_id: int, first_name: str, last_name: str, phone_number: str):
+def add_client(first_name: str, last_name: str, phone_number: str, social_network: int = None):
     """Добавление клиента"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO clients (telegram_id, first_name, last_name, phone_number) '
+            'INSERT INTO clients (first_name, last_name, phone_number, social_network) '
             'VALUES (?, ?, ?, ?)',
-            (telegram_id, first_name, last_name, phone_number)
+            (first_name, last_name, phone_number, social_network)
         )
         conn.commit()
 
 
-def get_client_by_telegram_id(telegram_id: int):
+def get_client_by_phone_number(phone_number: str):
     """Получение клиента по telegram_id"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM clients WHERE telegram_id = ?', (telegram_id,))
+        cursor.execute('SELECT * FROM clients WHERE phone_number = ?', (phone_number,))
         return cursor.fetchone()
 
 

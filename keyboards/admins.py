@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton
 
 
 def get_type_finance_kb(role):
@@ -34,11 +34,9 @@ def get_cars_keyboard(cars):
 # Клавиатура для выбора услуги
 def get_services_keyboard():
     builder = InlineKeyboardBuilder()
-    for service in SERVICES:
-        builder.add(InlineKeyboardButton(text=service, callback_data=f"service_{service}"))
     builder.add(InlineKeyboardButton(text="Назад", callback_data="back"))
     builder.add(InlineKeyboardButton(text="Отменить", callback_data="cancel"))
-    builder.adjust(1)  # Одна кнопка в строке
+    builder.adjust(2)  # Одна кнопка в строке
     return builder.as_markup()
 
 

@@ -1,13 +1,10 @@
-import os
-
 from aiogram import Router, F
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from database.db_crud import get_employee_by_telegram_id, add_employee_approval, get_approved_employees, add_employee
+from database.db_crud import add_employee_approval, get_approved_employees, add_employee
 from database.state_models import UserCookies, UserRegistrationObject
-from keyboards.general import roles_kb, get_access_confirmation, menu_by_role
+from keyboards.general import get_access_confirmation, menu_by_role
 from settings import bot
 
 general = Router()
@@ -37,22 +34,23 @@ async def choice_role(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.answer(sec_message)
 
 
-@general.callback_query(F.data.startswith('accept'), UserRegistrationObject.waiting_for_confirmation)
+@general.callback_query(F.data == 'accept', UserRegistrationObject.waiting_for_confirmation)
 async def get_accept_by_user(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    new_user = data.get("new_user")
+    new_user = data.get("new_worker")
     user_role = data.get("user_role")
     if not new_user:
         await callback_query.answer("Ошибка: нет данных о пользователе.")
+        print(f"new_user object: {new_user}")
         return
 
     # Добавляем пользователя в БД
     senior_telegram_id = callback_query.from_user.id
 
-    # add_employees(new_user.get("telegram_id"),
-    #          new_user.get("first_name"),
-    #          new_user.get("last_name"),
-    #          user_role)
+    add_employee(new_user.get("telegram_id"),
+                 new_user.get("first_name"),
+                 new_user.get("last_name"),
+                 user_role)
     add_employee_approval(senior_telegram_id, new_user.get("telegram_id"))
 
     await callback_query.answer("Пользователь успешно подтверждён!")
@@ -62,7 +60,7 @@ async def get_accept_by_user(callback_query: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-@general.callback_query(F.data.startswith('reject'), UserRegistrationObject.waiting_for_confirmation)
+@general.callback_query(F.data == 'reject', UserRegistrationObject.waiting_for_confirmation)
 async def get_reject_by_wne_user(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     new_user = data.get("new_user")

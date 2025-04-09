@@ -34,10 +34,10 @@ def create_tables():
     cursor.execute("""
             CREATE TABLE IF NOT EXISTS clients (
                 clients_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID пользователя
-                telegram_id INTEGER UNIQUE,                 -- ID пользователя в Telegram
                 first_name TEXT,                            -- Имя пользователя
                 last_name TEXT,                             -- Фамилия пользователя
-                phone_number TEXT NOT NULL,                          -- Номер телефона
+                phone_number TEXT NOT NULL,                     -- Номер телефона
+                social_network TEXT,                      -- ID пользователя в Telegram
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
             );
         """)
