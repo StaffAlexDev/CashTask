@@ -13,7 +13,6 @@ load_dotenv(find_dotenv())
 superuser = Router()
 
 
-# Для авто-регистрации суперюзера
 @superuser.message(F.text == os.getenv("SUPERADMIN_PASS"))
 async def admin_password(message: Message):
     telegram_id = message.from_user.id

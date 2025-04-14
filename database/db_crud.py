@@ -6,15 +6,15 @@ from utils import dict_factory
 
 
 # ========== Employees (Сотрудники) ==========
-def add_employee(telegram_id: int, first_name: str, last_name: str, role: str,
+def add_employee(telegram_id: int, first_name: str, role: str, last_name: str = None,
                  phone_number: str = None, language: str = None):
     """Добавление сотрудника"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO employees (telegram_id, first_name, last_name, role, phone_number, language) '
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            (telegram_id, first_name, last_name, role, phone_number, language)
+            'INSERT INTO employees (telegram_id, first_name, role) '
+            'VALUES (?, ?, ?)',
+            (telegram_id, first_name, role)
         )
         conn.commit()
 
@@ -84,11 +84,11 @@ def add_client(first_name: str, last_name: str, phone_number: str, social_networ
         conn.commit()
 
 
-def get_client_by_phone_number(phone_number: str):
+def get_client_id_by_phone_number(phone_number: str):
     """Получение клиента по telegram_id"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM clients WHERE phone_number = ?', (phone_number,))
+        cursor.execute('SELECT clients_id FROM clients WHERE phone_number = ?', (phone_number,))
         return cursor.fetchone()
 
 
@@ -113,12 +113,34 @@ def get_client_cars(client_id: int):
         return cursor.fetchall()
 
 
-def get_car_by_id(car_id: int):
+def get_car_id_by_license_plate(license_plate: str):
     """Получение автомобиля по ID"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM cars WHERE car_id = ?', (car_id,))
+        cursor.execute('SELECT car_id FROM cars WHERE license_plate = ?', (license_plate,))
         return cursor.fetchone()
+
+
+def get_car_obj_by_license_plate(license_plate: str):
+    """Получение автомобиля по ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM cars WHERE license_plate = ?', (license_plate,))
+        return cursor.fetchone()
+
+
+def get_cars_and_owner_by_model(model: str):
+    """Получение автомобиля по ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT cars.car_id, clients.first_name, clients.last_name, clients.phone_number,
+                   cars.car_model, cars.car_year, cars.license_plate
+            FROM cars
+            JOIN clients ON cars.clients_id = clients.clients_id
+            WHERE cars.car_model = ?
+        """, (model,))
+        return cursor.fetchall()
 
 
 # ========== Orders (Заказы) ==========
@@ -316,7 +338,4 @@ def update_task_status(task_id: int, new_status: str):
 
 
 if __name__ == '__main__':
-    # Примеры использования
-    add_employee(123456789, 'Иван', 'Иванов', 'mechanic', '+79123456789')
-    employee = get_employee_by_telegram_id(123456789)
-    print(employee)
+    pass

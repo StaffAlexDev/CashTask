@@ -7,6 +7,7 @@ from config import LANGUAGE_DIR
 
 
 class OrderStates(StatesGroup):
+    waiting_for_client = State()  # Ожидаем клиента
     waiting_for_car = State()  # Ожидание выбора автомобиля
     waiting_for_service = State()  # Ожидание выбора услуги
     waiting_for_confirmation = State()  # Ожидание подтверждения

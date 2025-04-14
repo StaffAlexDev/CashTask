@@ -4,6 +4,7 @@ from pathlib import Path
 USER_ROLES = ['worker', 'admin', 'superadmin']
 
 INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)
 
 BASE_DIR = Path(__file__).parent
 PHOTOS_DIR = BASE_DIR / "receipts"

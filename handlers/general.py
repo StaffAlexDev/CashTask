@@ -13,6 +13,7 @@ general = Router()
 @general.callback_query(F.data.startswith('role_'))
 async def choice_role(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.answer()
+
     user_id = callback_query.message.from_user.id
     lang = UserCookies(user_id).get_lang()
     lng_message = lang.get("info").get("user_accept")

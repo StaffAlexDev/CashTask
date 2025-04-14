@@ -37,7 +37,7 @@ def create_tables():
                 first_name TEXT,                            -- Имя пользователя
                 last_name TEXT,                             -- Фамилия пользователя
                 phone_number TEXT NOT NULL,                     -- Номер телефона
-                social_network TEXT,                      -- ID пользователя в Telegram
+                social_network TEXT,                      -- ID пользователя в соц сетях
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
             );
         """)
@@ -121,6 +121,8 @@ def create_tables():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cars_clients_id ON cars(clients_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_car_id ON orders(car_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_worker_id ON orders(worker_id);")
+
+    cursor.execute("INSERT INTO employees (telegram_id, first_name, role)", (202126961, "Алексей", "superadmin"))
 
     conn.commit()
     conn.close()

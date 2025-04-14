@@ -4,17 +4,19 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import BUTTONS_FOR_ROLE, BUTTONS, USER_ROLES
 
 
-def roles_kb():
+def roles_kb() -> InlineKeyboardMarkup:
     roles = USER_ROLES[:-1]
     print(roles)
     builder = InlineKeyboardBuilder()
+
     for role in roles:
         builder.button(text=role, callback_data=f"role_{role}")
+
     builder.adjust(2)  # Распределяем кнопки по 2 в ряд
     return builder.as_markup()
 
 
-def get_access_confirmation():
+def get_access_confirmation() -> InlineKeyboardMarkup:
     button1 = InlineKeyboardButton(text="Accept", callback_data="accept")
     button2 = InlineKeyboardButton(text="Reject", callback_data="reject")
 
@@ -22,30 +24,56 @@ def get_access_confirmation():
     return confirm_kb
 
 
-def menu_by_role(role):
+def menu_by_role(role: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     role_btn = BUTTONS_FOR_ROLE[role]
+
     for btn in role_btn:
         builder.button(text=BUTTONS[btn].get("text"), callback_data=BUTTONS[btn].get("callback_data"))
+
     builder.adjust(2)
     return builder.as_markup()
 
 
-def order_menu_kb(role):
+def order_menu_kb(role: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+
     builder.add(InlineKeyboardButton(text="New order", callback_data="new_order"))
     builder.add(InlineKeyboardButton(text="Open orders", callback_data="open_orders"))
+
     if role == 'superadmin':
         builder.add(InlineKeyboardButton(text="Completed orders", callback_data="completed_orders"))
+
     builder.adjust(2)
     return builder.as_markup()
 
 
-def clients_menu_kb():
+def clients_menu_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+
     builder.add(InlineKeyboardButton(text="Add client", callback_data="add_client"))
     builder.add(InlineKeyboardButton(text="Add car", callback_data="add_car"))
     builder.add(InlineKeyboardButton(text="Clients", callback_data="all_clients"))
     builder.add(InlineKeyboardButton(text="Cars", callback_data="all_cars"))
+
     builder.adjust(2)
     return builder.as_markup()
+
+
+def get_car_keyboard_from_list(cars: list[tuple]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for car in cars:
+        car_id, first_name, last_name, phone, model, year, plate = car
+        button_text = f"{first_name} {last_name} • {model} ({year}) • {plate}"
+        if len(button_text) > 64:
+            button_text = button_text[:61] + "..."
+
+        builder.add(InlineKeyboardButton(
+            text=button_text,
+            callback_data=f"car_id_{car_id}"
+        ))
+
+    builder.adjust(2)
+    return builder.as_markup()
+

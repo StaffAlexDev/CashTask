@@ -20,6 +20,14 @@ def get_finance_kb():
     return builder.as_markup()
 
 
+def order_type_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Client", callback_data="by_client"))
+    builder.add(InlineKeyboardButton(text="Car", callback_data="by_car"))
+    builder.adjust(1)  # Одна кнопка в строке
+    return builder.as_markup()
+
+
 # Клавиатура для выбора автомобиля
 def get_cars_keyboard(cars):
     builder = InlineKeyboardBuilder()

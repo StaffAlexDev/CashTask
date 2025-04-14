@@ -6,11 +6,15 @@ from aiogram.filters import or_f
 from aiogram.types import CallbackQuery, Message
 from dotenv import find_dotenv, load_dotenv
 
+from keyboards.general import get_car_keyboard_from_list
 from settings import bot
-from database.db_crud import add_order, get_client_cars, add_finance_by_car
+from database.db_crud import (add_order, get_client_cars, add_finance_by_car, get_car_id_by_license_plate,
+                              get_cars_and_owner_by_model, get_client_id_by_phone_number)
 from database.state_models import OrderStates, FinanceStates
 from keyboards.admins import (get_cars_keyboard, get_services_keyboard, get_confirmation_keyboard,
-                              get_finance_kb)
+                              get_finance_kb, order_type_kb)
+
+from utils import is_likely_license_plate, is_phone_number, clean_phone_number
 
 load_dotenv(find_dotenv())
 admins = Router()
@@ -23,33 +27,76 @@ async def admin_password(message: Message):
 
 
 # ----------------- ORDERS MENU ----------------------
+
 @admins.message(F.data == "new_order")
-async def start_order(message: Message, state: FSMContext):
+async def order_menu(callback_query: CallbackQuery):
+    await callback_query.answer()
+    await callback_query.message.answer("Выбери тип", reply_markup=order_type_kb())
 
-    user_id = message.from_user.id
-    cars = await get_client_cars(user_id)
 
-    if not cars:
-        await message.answer("У вас нет зарегистрированных автомобилей.")
-        return
-
-    await message.answer("Выберите автомобиль:", reply_markup=get_cars_keyboard(cars))
-    await state.set_state(OrderStates.waiting_for_car)
+@admins.message(F.data.startswith("by_"))
+async def order_menu(callback_query: CallbackQuery, state: FSMContext):
+    await callback_query.answer()
+    choice = callback_query.data.split("_")[1]
+    match choice:
+        case "client":
+            await state.set_state(OrderStates.waiting_for_client)
+            await callback_query.message.answer("Введи номер телефона клиента")
+        case "car":
+            await state.set_state(OrderStates.waiting_for_car)
+            await callback_query.message.answer("Введи номер авто или модель")
 
 
 # Обработка выбора автомобиля
-@admins.callback_query(OrderStates.waiting_for_car, F.data.startswith("car_"))
-async def process_car_selection(callback_query: CallbackQuery, state: FSMContext):
+@admins.callback_query(OrderStates.waiting_for_car)
+async def process_car_selection(message: Message, state: FSMContext):
+    data = message.text
 
-    car_id = int(callback_query.data.split("_")[1])
+    if is_likely_license_plate(data):
 
-    await state.update_data(car_id=car_id)
-    await callback_query.message.answer("Выберите услугу:", reply_markup=get_services_keyboard())
-    await state.set_state(OrderStates.waiting_for_service)
+        car_id = get_car_id_by_license_plate(data)
+        await state.update_data(car_id=car_id)
+        await state.set_state(OrderStates.waiting_for_service)
+        await message.answer("Введите работы: Можно список работ через запятую!\n"
+                             "Также можете в скобках указать цену работ. Пример:\n"
+                             "рихтовка(цена), ...")
+    else:
+        cars = get_cars_and_owner_by_model(data)
+
+        if not cars:
+            await message.answer("Простите, такой модели нет в базе")
+        else:
+            keyboard = get_car_keyboard_from_list(cars)
+            await message.answer("Выберите автомобиль", reply_markup=keyboard)
+
+
+@admins.callback_query(OrderStates.waiting_for_client)
+async def process_car_selection_by_client(message: Message, state: FSMContext):
+    phone = clean_phone_number(message.text)
+    if is_phone_number(phone):
+
+        client_id = get_client_id_by_phone_number(phone)
+        client_cars = get_client_cars(client_id)
+
+        if not client_cars:
+            await message.answer("У клиента нет машин, нужно добавить хотя-бы одну машину")
+            # TODO добавить опросник для создания автомобиля клиенту или переспросить клиента
+
+        elif len(client_cars) == 1:
+            car = client_cars[0]
+            car_id = car["car_id"]
+            await state.update_data(car_id=car_id)
+            await state.set_state(OrderStates.waiting_for_service)
+            await message.answer("Введите работы: Можно список работ через запятую!\n"
+                                 "Также можете в скобках указать цену работ. Пример:\n"
+                                 "рихтовка(цена), ...")
+
+        elif len(client_cars) > 1:
+            await message.answer("Выбери автомобиль клиента", reply_markup=get_car_keyboard_from_list(client_cars))
 
 
 # Обработка выбора услуги
-@admins.callback_query(OrderStates.waiting_for_service, F.data.startswith("service_"))
+@admins.callback_query(OrderStates.waiting_for_service)
 async def process_service_selection(callback_query: CallbackQuery, state: FSMContext):
     service = callback_query.data.split("_")[1]
     await state.update_data(service=service)
