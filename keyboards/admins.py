@@ -1,6 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton
 
+from database.db_crud import get_workers
+
 
 def get_type_finance_kb(role):
     builder = InlineKeyboardBuilder()
@@ -28,8 +30,7 @@ def order_type_kb():
     return builder.as_markup()
 
 
-# Клавиатура для выбора автомобиля
-def get_cars_keyboard(cars):
+def get_cars_kb(cars):
     builder = InlineKeyboardBuilder()
     for car in cars:
         builder.add(
@@ -39,22 +40,26 @@ def get_cars_keyboard(cars):
     return builder.as_markup()
 
 
-# Клавиатура для выбора услуги
-def get_services_keyboard():
+def get_employer_kb():
     builder = InlineKeyboardBuilder()
-    builder.add(InlineKeyboardButton(text="Назад", callback_data="back"))
+    employees = get_workers()
+    for employer in employees:
+        builder.add(
+            InlineKeyboardButton(text=f"{employer['first_name']}", callback_data=f"employer_{employer['user_id']}"))
     builder.add(InlineKeyboardButton(text="Отменить", callback_data="cancel"))
     builder.adjust(2)  # Одна кнопка в строке
     return builder.as_markup()
 
 
-# Клавиатура для подтверждения
-def get_confirmation_keyboard():
+def get_confirmation_kb():
     builder = InlineKeyboardBuilder()
-    builder.add(
-        InlineKeyboardButton(text="Подтвердить", callback_data="confirm"),
+
+    builder.row(
+        InlineKeyboardButton(text="Подтвердить", callback_data="confirm")
+    )
+    builder.row(
         InlineKeyboardButton(text="Назад", callback_data="back"),
         InlineKeyboardButton(text="Отменить", callback_data="cancel")
     )
-    builder.adjust(1)  # Одна кнопка в строке
+
     return builder.as_markup()

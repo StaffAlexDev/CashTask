@@ -1,5 +1,3 @@
-# import os
-# import sys
 
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -11,7 +9,6 @@ from handlers.workers import worker
 from handlers.superuser import superuser
 from handlers.general import general
 
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 

@@ -1,13 +1,15 @@
 from datetime import datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
+
+from config import USER_ROLES
 from database.db_settings import get_db_connection
 from utils import dict_factory
 
 
 # ========== Employees (Сотрудники) ==========
 def add_employee(telegram_id: int, first_name: str, role: str, last_name: str = None,
-                 phone_number: str = None, language: str = None):
+                 phone_number: str = None):
     """Добавление сотрудника"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -24,6 +26,15 @@ def get_employee_by_telegram_id(telegram_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM employees WHERE telegram_id = ?', (telegram_id,))
+        return cursor.fetchone()
+
+
+def get_workers():
+    """Получение работников"""
+    worker = USER_ROLES[0]
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM employees WHERE role = ?', (worker,))
         return cursor.fetchone()
 
 
@@ -71,6 +82,23 @@ def get_approved_employees(approver_id: int):
         return cursor.fetchall()
 
 
+def get_approver_employees_telegram_id(role: str):
+    """Получение списка сотрудников кто будет подтверждать нового сотрудника"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        index = USER_ROLES.index(role)
+        approver = USER_ROLES[index + 1]
+        print("МЫ в методе получения сотрудника на ранг выше")
+        print(f"USER_ROLES: {USER_ROLES}")
+        print(f"role: {role}")
+        print(f"USER_ROLES.index(role): {index}")
+        print(f"approver {approver}")
+        cursor.execute("""
+                SELECT telegram_id FROM employees WHERE role = ?
+        """, (approver,))
+        return [row[0] for row in cursor.fetchall()]
+
+
 # ========== Clients (Клиенты) ==========
 def add_client(first_name: str, last_name: str, phone_number: str, social_network: int = None):
     """Добавление клиента"""
@@ -113,6 +141,14 @@ def get_client_cars(client_id: int):
         return cursor.fetchall()
 
 
+def get_car_by_id(car_id):
+    """Возвращает объект автомобиля по его ID"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM cars WHERE car_id = ?', (car_id,))
+        return cursor.fetchone()
+
+
 def get_car_id_by_license_plate(license_plate: str):
     """Получение автомобиля по ID"""
     with get_db_connection() as conn:
@@ -144,14 +180,14 @@ def get_cars_and_owner_by_model(model: str):
 
 
 # ========== Orders (Заказы) ==========
-def add_order(car_id: int, worker_id: int, description: str, status: str = 'new'):
+def add_order(car_id: int, description: str, status: str = 'new', worker_id: int = None):
     """Добавление заказа"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO orders (car_id, worker_id, description, status) '
+            'INSERT INTO orders (car_id, description, status, worker_id) '
             'VALUES (?, ?, ?, ?)',
-            (car_id, worker_id, description, status)
+            (car_id, description, status, worker_id)
         )
         conn.commit()
 
@@ -335,6 +371,51 @@ def update_task_status(task_id: int, new_status: str):
             (new_status, task_id)
         )
         conn.commit()
+
+
+def insert_test_clients_and_cars():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Данные клиентов
+    clients = [
+        ("Иван", "Иванов", "1111111111", "tg_ivan"),
+        ("Петр", "Петров", "2222222222", "tg_petr"),
+        ("Анна", "Смирнова", "3333333333", "tg_anna"),
+        ("Олег", "Кузнецов", "4444444444", "tg_oleg"),
+        ("Елена", "Морозова", "5555555555", "tg_elena"),
+    ]
+
+    cars_per_client = [1, 2, 3, 4, 2]  # Кол-во машин на клиента
+
+    brands = ["Toyota", "BMW", "Lada", "Honda", "Kia"]
+    models = ["Camry", "X5", "Vesta", "Civic", "Rio"]
+    years = [2010, 2015, 2020, 2005, 2012]
+
+    car_counter = 0
+    for i, client in enumerate(clients):
+        cursor.execute("""
+            INSERT OR IGNORE INTO clients (first_name, last_name, phone_number, social_network)
+            VALUES (?, ?, ?, ?)
+        """, client)
+        client_id = cursor.lastrowid
+
+        for j in range(cars_per_client[i]):
+            brand = brands[(car_counter + j) % len(brands)]
+            model = models[(car_counter + j) % len(models)]
+            year = years[(car_counter + j) % len(years)]
+            plate = f"TEST{car_counter + j:03d}"
+            vin = f"VIN{car_counter + j:08d}"
+
+            cursor.execute("""
+                INSERT OR IGNORE INTO cars (clients_id, car_brand, car_model, car_year, license_plate, vin_code)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (client_id, brand, model, year, plate, vin))
+
+        car_counter += cars_per_client[i]
+
+    conn.commit()
+    conn.close()
 
 
 if __name__ == '__main__':

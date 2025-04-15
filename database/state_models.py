@@ -10,6 +10,7 @@ class OrderStates(StatesGroup):
     waiting_for_client = State()  # Ожидаем клиента
     waiting_for_car = State()  # Ожидание выбора автомобиля
     waiting_for_service = State()  # Ожидание выбора услуги
+    waiting_for_employer = State()  # Кто будет выполнять работу
     waiting_for_confirmation = State()  # Ожидание подтверждения
 
 
@@ -31,19 +32,6 @@ class UserCookies:
         self.lang = "ru"
         self.role = None
 
-    def set_lang(self, lang):
-        self.lang = lang
-        try:
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR REPLACE INTO employees (telegram_id, lang)
-                    VALUES (?, ?)
-                ''', (self.telegram_id, self.lang))
-                conn.commit()
-        except Exception as e:
-            print(f"Ошибка при обновлении языка: {e}")
-
     def get_lang(self):
         try:
             if self.lang not in self._lang_cache:
@@ -55,7 +43,6 @@ class UserCookies:
             return {}
 
     def get_role(self):
-        # Ленивая загрузка роли: если роль не загружена, загружаем её из базы
         if self.role is None:
             try:
                 with get_db_connection() as conn:
@@ -67,22 +54,32 @@ class UserCookies:
                     if result:
                         self.role = result[0]
                     else:
-                        self.role = "user"  # Роль по умолчанию, если её нет в базе
+                        self.role = "user"
             except Exception as e:
                 print(f"Ошибка при получении роли из базы: {e}")
-                self.role = "worker"  # Роль по умолчанию в случае ошибки
+                self.role = "worker"
         return self.role
 
-    def set_role(self, role):
-        # Обновляем роль в ОЗУ и в базе данных
-        self.role = role
+    def update_profile(self, lang=None, role=None):
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
+                if lang is not None:
+                    self.lang = lang
+                    cursor.execute('''
+                        UPDATE employees SET lang = ?
+                        WHERE telegram_id = ?
+                    ''', (lang, self.telegram_id))
+                if role is not None:
+                    self.role = role
+                    cursor.execute('''
+                        UPDATE employees SET role = ?
+                        WHERE telegram_id = ?
+                    ''', (role, self.telegram_id))
                 cursor.execute('''
-                    INSERT OR REPLACE INTO employees (telegram_id, role)
-                    VALUES (?, ?)
-                ''', (self.telegram_id, self.role))
+                    INSERT OR IGNORE INTO employees (telegram_id, lang, role)
+                    VALUES (?, ?, ?)
+                ''', (self.telegram_id, self.lang, self.role))
                 conn.commit()
         except Exception as e:
-            print(f"Ошибка при обновлении роли: {e}")
+            print(f"Ошибка при обновлении профиля: {e}")

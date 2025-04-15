@@ -25,13 +25,7 @@ async def command_start(message: Message, state: FSMContext):
 
     if user_db is None:
         await message.answer(lang.get("unknown_user").get("greetings"), reply_markup=roles_kb())
-        new_worker = {
-            "telegram_id": message.from_user.id,
-            "first_name": message.from_user.first_name,
-            "last_name": message.from_user.last_name,
-        }
-        print(new_worker)
-        await state.update_data(new_worker=new_worker)
+
         await state.set_state(UserRegistrationObject.waiting_for_confirmation)
 
     else:

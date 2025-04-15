@@ -5,7 +5,7 @@ def create_tables():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Таблица с сотрудников
+    # Таблица сотрудников
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS employees (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID пользователя
@@ -117,12 +117,15 @@ def create_tables():
 
     # Индексы
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_telegram_id ON employees(telegram_id);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clients_telegram_id ON clients(telegram_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_clients_social_network ON clients(social_network);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_cars_clients_id ON cars(clients_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_car_id ON orders(car_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_worker_id ON orders(worker_id);")
 
-    cursor.execute("INSERT INTO employees (telegram_id, first_name, role)", (202126961, "Алексей", "superadmin"))
+    cursor.execute("""
+        INSERT OR IGNORE INTO employees (telegram_id, first_name, role) 
+        VALUES (?, ?, ?)
+    """, (202126961, "Алексей", "superadmin"))
 
     conn.commit()
     conn.close()
