@@ -1,7 +1,7 @@
 import os
 
-from aiogram import Router
-from aiogram.filters import Command
+from aiogram import Router, F
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -84,7 +84,6 @@ async def command_language(message: Message):
 
     if user is not None:
         lang = UserCookies(user_id).get_lang()
-        print(lang)
         builder = InlineKeyboardBuilder()
         for file in files:
             if os.path.isfile(file):
@@ -96,3 +95,9 @@ async def command_language(message: Message):
         await message.answer(lang.get("language").get("select_lang"), reply_markup=lang_kb)
     else:
         await message.answer("У вас нет доступа!")
+
+
+# Отлавливаем белиберду которая не обработана другими хэндлерами
+@commands.message(F.text, ~StateFilter(None))
+async def orders_menu(message: Message):
+    await message.reply("Это неизвестное действие")

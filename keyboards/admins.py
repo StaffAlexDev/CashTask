@@ -11,7 +11,7 @@ def get_type_finance_kb(role):
     builder.add(InlineKeyboardButton(text="Топливо", callback_data="finance_fuel"))
 
     if role == "supervisor":
-        builder.add(InlineKeyboardButton(text="Отчет", callback_data="finance_report"))
+        builder.add(InlineKeyboardButton(text="Отчеты", callback_data="finance_report"))
     return builder.as_markup()
 
 

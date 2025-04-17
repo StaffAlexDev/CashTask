@@ -28,14 +28,26 @@ async def admin_password(message: Message):
     await message.answer("Привет Superadmin", reply_markup=menu_by_role(role))
 
 
-async def choice_period(callback_query: CallbackQuery, state: FSMContext):
+async def choice_period(callback_query: CallbackQuery):
     await callback_query.answer()
     await callback_query.message.answer("Выберите период", reply_markup=period_by_report_kb())
 
 
 @superuser.callback_query(F.data.startswith('period_'))
 async def choice_role(callback_query: CallbackQuery):
-    await callback_query.answer()
+
     period = callback_query.data.split("_")[1]
-    result = get_financial_report(period)
-    print(result)  # TODO дописать логику вывода данных по периоду
+    period_map = get_financial_report(period)
+    print(period_map)  # TODO дописать логику вывода данных по периоду
+    text = f"""
+        'period': {period_map.get("period")},
+        'start_date': {period_map.get("start_date")},
+        'end_date': {period_map.get("end_date")},
+        'total_income': {period_map.get("total_income")},
+        'total_expense': {period_map.get("total_expense")},
+        'profit': {period_map.get("profit")},
+        'summary': {period_map.get("summary")},
+        'transactions': {period_map.get("transactions")}
+    """
+    await callback_query.answer(text, show_alert=True)
+

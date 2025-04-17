@@ -96,6 +96,4 @@ async def get_selected_language(callback_query: CallbackQuery):
     await callback_query.answer(lang.get("language").get("accept_lang"))
 
 
-# @general.message()
-# async def orders_menu(message: Message):
-#     await message.reply("Это неизвестное действие")
+

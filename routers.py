@@ -3,11 +3,11 @@ from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from handlers.admins import admins
-from handlers.chat import chat
-from handlers.commands import commands
 from handlers.workers import worker
 from handlers.superuser import superuser
 from handlers.general import general
+from handlers.chat import chat
+from handlers.commands import commands
 
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)

@@ -34,7 +34,7 @@ PERIOD_BUTTONS = {
         "two_weeks": {"text": "Две недели", "callback_data": "two_weeks"},
         "month": {"text": "Месяц", "callback_data": "month"},
         "all": {"text": "За все время", "callback_data": "all"},
-    }
+    }  # При изменении тут нужно и в функции -> get_financial_report -> period_map
 
 
 if __name__ == '__main__':
