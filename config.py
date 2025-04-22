@@ -1,16 +1,21 @@
 import re
 from pathlib import Path
 
-USER_ROLES = ['worker', 'admin', 'superadmin']
-
-INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
-PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)
-
 BASE_DIR = Path(__file__).parent
 PHOTOS_DIR = BASE_DIR / "receipts"
 LANGUAGE_DIR = BASE_DIR / "languages"
 
+USER_ROLES = ['worker', 'admin', 'superadmin']
+COUNT_DAYS = {2, 7, 14}
 
+# Patterns
+INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)
+BRAND_PATTERN = r"^[A-Za-zА-Яа-яЁё]+$"
+MODEL_PATTERN = r"^[A-Za-zА-Яа-яЁё0-9\- ]+$"
+DATE_PATTERN = r"^\d{2}\.\d{2}\.\d{4}$"
+
+# List Buttons
 BUTTONS = {
         "car_in_work": {"text": "Авто в работе", "callback_data": "car_in_work"},
         "materials": {"text": "Нужны материалы", "callback_data": "materials"},
@@ -38,4 +43,4 @@ PERIOD_BUTTONS = {
 
 
 if __name__ == '__main__':
-    print(USER_ROLES[1:])
+    print("count_days".upper())

@@ -1,9 +1,13 @@
+import asyncio
 import re
+import time
 
 from datetime import datetime
 from pathlib import Path
 
-from config import PHOTOS_DIR, PHONE_PATTERN
+from config import PHOTOS_DIR, PHONE_PATTERN, BRAND_PATTERN, MODEL_PATTERN, DATE_PATTERN, COUNT_DAYS
+from database.db_crud import get_employees_cars
+from settings import bot
 
 
 def get_month_year_folder(base_dir=PHOTOS_DIR):
@@ -56,7 +60,7 @@ def is_likely_license_plate(text: str) -> bool:
     return is_plate or (has_letters and has_digits)
 
 
-def clean_phone_number(phone: str) -> str:
+def normalize_number(phone: str) -> str:
     phone = phone.strip()
     phone = re.sub(r"[^\d+]", "", phone)
     if phone.startswith('+'):
@@ -68,3 +72,108 @@ def clean_phone_number(phone: str) -> str:
 
 def is_phone_number(phone: str) -> bool:
     return bool(re.match(PHONE_PATTERN, phone))
+
+
+def normalize_date(date_str: str) -> str | None:
+    try:
+        dt = datetime.strptime(date_str.strip(), "%d.%m.%y")
+
+        if dt.year < 100:
+            dt = dt.replace(year=dt.year + 2000)
+        return dt.strftime("%d.%m.%Y")
+    except ValueError:
+        try:
+
+            dt = datetime.strptime(date_str.strip(), "%d.%m.%Y")
+            return dt.strftime("%d.%m.%Y")
+        except ValueError:
+            return None
+
+
+def is_data(text: str) -> bool:
+    return bool(re.match(DATE_PATTERN, normalize_date(text)))
+
+
+def is_text_patterns(text: list) -> dict:
+
+    if len(text) != 5:
+        return {"status": "неверное количество полей."}
+    else:
+        brand, model, plate, tech_date, ins_date = text
+
+        if not re.match(BRAND_PATTERN, brand):
+            return {"status": "некорректная марка."}
+        elif not re.match(MODEL_PATTERN, model):
+            return {"status": "некорректная модель."}
+        elif not is_data(tech_date):
+            return {"status": "неверный формат даты ТО."}
+        elif not is_data(ins_date):
+            return {"status": "неверный формат даты страховки."}
+        else:
+            return {"status": "ok"}
+
+
+async def checking_the_end_date_of_documents(stop_event: asyncio.Event):
+    while not stop_event.is_set():
+        try:
+            employer_cars = get_employees_cars()
+            today = datetime.today()
+            notifications = {}
+
+            for car in employer_cars:
+                try:
+                    employer_id = car.get("employer_id")
+                    if not employer_id:
+                        continue
+
+                    await process_document(
+                        car, "technical_inspection", "техосмотр",
+                        today, COUNT_DAYS, notifications, employer_id
+                    )
+                    await process_document(
+                        car, "insurance", "страховка",
+                        today, COUNT_DAYS, notifications, employer_id
+                    )
+
+                except Exception as e:
+                    print(f"Error processing car {car}: {e}")
+                    continue
+
+            if notifications:
+                await send_notifications(notifications)
+
+            await asyncio.sleep(86400)  # Ждем 24 часа
+
+        except Exception as e:
+            print(f"Error in main loop: {e}")
+            await asyncio.sleep(3600)
+
+
+async def process_document(car, doc_field, doc_type, today, count_days, notifications, employer_id):
+    doc_date_str = car.get(doc_field)
+    if not doc_date_str:
+        return
+
+    try:
+        doc_date = datetime.strptime(doc_date_str, "%d.%m.%Y")
+        days_left = (doc_date - today).days
+
+        if days_left in count_days:
+            if employer_id not in notifications:
+                notifications[employer_id] = []
+            notifications[employer_id].append({
+                "type": doc_type,
+                "days_left": days_left
+            })
+    except ValueError as e:
+        print(f"Invalid date format for {doc_field}: {doc_date_str}, error: {e}")
+
+
+async def send_notifications(notifications):
+    for employer_id, employer_data in notifications.items():
+        try:
+            for data in employer_data:
+                message = f"Через {data['days_left']} дней у вас заканчивается {data['type']}"
+                await bot.send_message(chat_id=employer_id, text=message)
+        except Exception as e:
+            print(f"Failed to send message to {employer_id}: {e}")

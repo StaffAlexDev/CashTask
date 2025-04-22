@@ -8,6 +8,7 @@ async def set_main_menu(bot):
         BotCommand(command="/orders", description="Available work orders"),
         BotCommand(command="/clients", description="List of clients and cars"),
         BotCommand(command="/finance", description="Entering financial information"),
+        BotCommand(command="/car_park", description="Tracking document terms"),
         BotCommand(command="/languages", description="You can choice languages")
     ]
     await bot.set_my_commands(main_menu_commands)

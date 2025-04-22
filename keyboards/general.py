@@ -79,3 +79,27 @@ def get_car_keyboard_from_list(cars: list[tuple]) -> InlineKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup()
 
+
+def car_park_menu_kb():
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Car list", callback_data="my_park_list"))
+    builder.add(InlineKeyboardButton(text="Add car", callback_data="my_park_add"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def car_employer_menu_kb(car_id):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Delete", callback_data=f"car_employer_{car_id}_delete"))
+    builder.add(InlineKeyboardButton(text="Edit", callback_data=f"car_employer_{car_id}_edit"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def employer_car_menu_kb(car_id):
+    builder = InlineKeyboardBuilder()
+    builder.add(InlineKeyboardButton(text="Номерной знак", callback_data=f"employer_car_{car_id}_plate"))
+    builder.add(InlineKeyboardButton(text="Техосмотр", callback_data=f"employer_car_{car_id}_inspection"))
+    builder.add(InlineKeyboardButton(text="Страховка", callback_data=f"employer_car_{car_id}_insurance"))
+    builder.adjust(2)
+    return builder.as_markup()

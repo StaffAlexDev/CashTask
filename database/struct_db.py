@@ -18,6 +18,7 @@ def create_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
         );
     """)
+
     # Таблица кто кого подтвердил в сотрудниках
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS employee_approvals (
@@ -28,6 +29,20 @@ def create_tables():
             FOREIGN KEY (approver_id) REFERENCES employees(telegram_id) ON DELETE CASCADE,
             FOREIGN KEY (approved_id) REFERENCES employees(telegram_id) ON DELETE CASCADE
         );
+        """)
+
+    # Таблица для автомобилей сотрудников
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS employer_cars (
+                car_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employer_id INTEGER UNIQUE,
+                car_brand TEXT,                            -- Марка машины
+                car_model TEXT,                            -- Модель машины
+                license_plate TEXT UNIQUE,                 -- Номерной знак
+                technical_inspection DATE,                 -- Технический осмотр
+                insurance DATE,                            -- Дата регистрации страховки
+                FOREIGN KEY (employer_id) REFERENCES employees(telegram_id) ON DELETE CASCADE
+                );
         """)
 
     # Таблица с клиентов
@@ -42,7 +57,7 @@ def create_tables():
             );
         """)
 
-    # Таблица автомобилей
+    # Таблица автомобилей клиентов
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cars (
             car_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID машины

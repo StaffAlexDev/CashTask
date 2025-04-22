@@ -11,7 +11,7 @@ from database.state_models import OrderStates, FinanceStates
 from keyboards.admins import (get_cars_kb, get_confirmation_kb,
                               get_finance_kb, order_type_kb, get_employer_kb)
 
-from utils import is_likely_license_plate, is_phone_number, clean_phone_number
+from utils import is_likely_license_plate, is_phone_number, normalize_number
 
 load_dotenv(find_dotenv())
 admins = Router()
@@ -66,7 +66,7 @@ async def process_car_selection(message: Message, state: FSMContext):
 
 @admins.callback_query(OrderStates.waiting_for_client)
 async def process_car_selection_by_client(message: Message, state: FSMContext):
-    phone = clean_phone_number(message.text)
+    phone = normalize_number(message.text)
     if is_phone_number(phone):
 
         client_id = get_client_id_by_phone_number(phone)
@@ -134,7 +134,7 @@ async def process_employer_selection(callback_query: CallbackQuery, state: FSMCo
     )
 
 
-@admins.callback_query(F.data == "confirm", OrderStates.waiting_for_confirmation)
+@admins.callback_query(F.data == "confirm", OrderStates.waiting_for_order_confirmation)
 async def process_confirm(callback_query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     car_id = data["car_id"]
@@ -156,7 +156,7 @@ async def process_back(callback_query: CallbackQuery, state: FSMContext):
         await callback_query.message.answer("Выберите автомобиль:", reply_markup=get_cars_kb(cars))
         await state.set_state(OrderStates.waiting_for_car)
 
-    elif current_state == OrderStates.waiting_for_confirmation:
+    elif current_state == OrderStates.waiting_for_order_confirmation:
         # Возврат к выбору услуги
         await callback_query.message.answer("Введите работы: Можно список работ через запятую!\n"
                                             "Также можете в скобках указать цену работ. Пример:\n"
@@ -170,7 +170,7 @@ async def process_back(callback_query: CallbackQuery, state: FSMContext):
         await callback_query.message.answer("Не удалось вернуться назад — неизвестное состояние.")
 
 
-@admins.callback_query(F.data == "cancel", OrderStates.waiting_for_confirmation)
+@admins.callback_query(F.data == "cancel", OrderStates.waiting_for_order_confirmation)
 async def process_cancel_from_confirmation(callback_query: CallbackQuery, state: FSMContext):
     await callback_query.message.answer("Заказ отменен.")
     await state.clear()

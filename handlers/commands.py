@@ -10,7 +10,7 @@ from config import LANGUAGE_DIR, USER_ROLES
 from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
 from database.state_models import UserCookies, UserRegistrationObject
 from keyboards.admins import get_type_finance_kb
-from keyboards.general import roles_kb, menu_by_role, order_menu_kb
+from keyboards.general import roles_kb, menu_by_role, order_menu_kb, car_park_menu_kb
 
 commands = Router()
 
@@ -73,6 +73,12 @@ async def finance_menu(message: Message):
         await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb(role))
     else:
         await message.answer("У вас нет доступа!")
+
+
+@commands.message(Command('car_park'))
+async def car_park_menu(message: Message):
+    text = "Выбери действие"
+    await message.answer(text, reply_markup=car_park_menu_kb())
 
 
 @commands.message(Command("languages"))

@@ -11,17 +11,22 @@ class OrderStates(StatesGroup):
     waiting_for_car = State()  # Ожидание выбора автомобиля
     waiting_for_service = State()  # Ожидание выбора услуги
     waiting_for_employer = State()  # Кто будет выполнять работу
-    waiting_for_confirmation = State()  # Ожидание подтверждения
+    waiting_for_order_confirmation = State()  # Ожидание подтверждения
 
 
-class UserRegistrationObject(StatesGroup):
-    waiting_for_confirmation = State()
+# class UserRegistrationObject(StatesGroup):
+#     waiting_for_confirmation = State()
 
 
 class FinanceStates(StatesGroup):
     investments = State()
     from_the_car = State()
     waiting_for_photo = State()
+
+
+class EmployerCarParkMenu(StatesGroup):
+    waiting_for_new_car = State()
+    waiting_for_new_data_for_car = State()
 
 
 class UserCookies:

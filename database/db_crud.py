@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
@@ -8,8 +9,7 @@ from utils import dict_factory
 
 
 # ========== Employees (Сотрудники) ==========
-def add_employee(telegram_id: int, first_name: str, role: str, last_name: str = None,
-                 phone_number: str = None):
+def add_employee(telegram_id: int, first_name: str, role: str):
     """Добавление сотрудника"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -26,7 +26,7 @@ def get_employee_by_telegram_id(telegram_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM employees WHERE telegram_id = ?', (telegram_id,))
-        return cursor.fetchone()
+        return cursor.fetchone()[0]
 
 
 def get_workers():
@@ -35,7 +35,7 @@ def get_workers():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM employees WHERE role = ?', (worker,))
-        return cursor.fetchone()
+        return cursor.fetchone()[0]
 
 
 def update_employee_role(telegram_id: int, new_role: str):
@@ -54,7 +54,7 @@ def get_role_by_telegram_id(telegram_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT role FROM employees WHERE telegram_id = ?', (telegram_id,))
-        return cursor.fetchone()
+        return cursor.fetchone()[0]
 
 
 # ========== Employee Approvals (Подтверждения сотрудников) ==========
@@ -69,7 +69,7 @@ def add_employee_approval(approver_id: int, approved_id: int):
         conn.commit()
 
 
-def get_approved_employees(approver_id: int):
+def get_approved_employees(approver_id: int) -> list:
     """Получение списка подтвержденных сотрудников"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -79,10 +79,10 @@ def get_approved_employees(approver_id: int):
             JOIN employee_approvals a ON e.telegram_id = a.approved_id
             WHERE a.approver_id = ?
         """, (approver_id,))
-        return cursor.fetchall()
+        return [row[0] for row in cursor.fetchall()]
 
 
-def get_approver_employees_telegram_id(role: str):
+def get_approver_employees_telegram_id(role: str) -> list:
     """Получение списка сотрудников кто будет подтверждать нового сотрудника"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -97,6 +97,65 @@ def get_approver_employees_telegram_id(role: str):
                 SELECT telegram_id FROM employees WHERE role = ?
         """, (approver,))
         return [row[0] for row in cursor.fetchall()]
+
+
+# Для автомобилей сотрудников
+def get_employer_car(employer_id: int) -> list:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+                        SELECT * FROM employer_cars WHERE employer_id = ?
+                """, (employer_id,))
+        return [row[0] for row in cursor.fetchall()]
+
+
+def add_employer_car(employer_id: int, car_brand: str, car_model: str, license_plate: str,
+                     technical_inspection: datetime, insurance: datetime) -> dict:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""SELECT * FROM employer_cars WHERE employer_id = ? AND license_plate = ?
+                               """, (employer_id, license_plate))
+        car = cursor.fetchone()
+
+        if car:
+            return {"status": "car_is_exist"}
+
+        try:
+            cursor.execute("""
+                    INSERT INTO employer_cars (employer_id, car_brand, car_model, license_plate,
+                     technical_inspection, insurance)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (employer_id, car_brand, car_model, license_plate,
+                      technical_inspection, insurance))
+            conn.commit()
+            return {"status": "Авто добавлено!"}
+
+        except sqlite3.Error as e:
+            return {"status": "error", "message": f"Ошибка при добавлении: {e}"}
+
+
+def get_employees_cars() -> list:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM employer_cars")
+        return [row[0] for row in cursor.fetchall()]
+
+
+def edit_car_info(action, new_data, car_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"""UPDATE employer_cars
+                        SET {action} = ?
+                        WHERE car_id = ? ;""", (new_data, car_id))
+        return cursor.rowcount
+
+
+def delete_car_by_id(employer_id, car_id):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM employer_cars WHERE employer_id = ? AND car_id = ?",
+                       (employer_id, car_id))
+        return cursor.rowcount > 0
 
 
 # ========== Clients (Клиенты) ==========
