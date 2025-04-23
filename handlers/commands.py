@@ -8,25 +8,24 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import LANGUAGE_DIR, USER_ROLES
 from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
-from database.state_models import UserCookies, UserRegistrationObject
+from database.state_models import UserCookies
 from keyboards.admins import get_type_finance_kb
-from keyboards.general import roles_kb, menu_by_role, order_menu_kb, car_park_menu_kb
+from keyboards.general import roles_kb, menu_by_role, order_menu_kb, car_park_menu_kb, clients_menu_kb
 
 commands = Router()
 
 
 @commands.message(Command("start"))
-async def command_start(message: Message, state: FSMContext):
+async def command_start(message: Message):
     user_id = message.from_user.id
     user_db = get_employee_by_telegram_id(user_id)
     user = UserCookies(user_id)
     lang = user.get_lang()
     print(user_db)
-
+    print(message.from_user.first_name)
+    print(message.from_user.last_name)
     if user_db is None:
         await message.answer(lang.get("unknown_user").get("greetings"), reply_markup=roles_kb())
-
-        await state.set_state(UserRegistrationObject.waiting_for_confirmation)
 
     else:
         user_role = user_db.get_role()
@@ -60,7 +59,7 @@ async def clients_menu(message: Message):
     telegram_id = message.from_user.id
     role = get_role_by_telegram_id(telegram_id)
     if role in USER_ROLES[1:]:
-        await message.answer('Что показать?', reply_markup=order_menu_kb(role))
+        await message.answer('Что показать?', reply_markup=clients_menu_kb())
     else:
         await message.answer("У вас нет доступа!")
 

@@ -1,6 +1,6 @@
 import asyncio
+import base64
 import re
-import time
 
 from datetime import datetime
 from pathlib import Path
@@ -17,14 +17,6 @@ def get_month_year_folder(base_dir=PHOTOS_DIR):
     folder_path = Path(base_dir) / folder_name
     folder_path.mkdir(parents=True, exist_ok=True)  # Создаем все родительские директории при необходимости
     return str(folder_path)
-
-
-def dict_factory(cursor, row):
-    """Хелпер для возврата результатов в виде словарей"""
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
 
 
 def is_likely_license_plate(text: str) -> bool:
@@ -122,7 +114,7 @@ async def checking_the_end_date_of_documents(stop_event: asyncio.Event):
 
             for car in employer_cars:
                 try:
-                    employer_id = car.get("employer_id")
+                    employer_id = car["employer_id"]
                     if not employer_id:
                         continue
 
@@ -155,9 +147,13 @@ async def process_document(car, doc_field, doc_type, today, count_days, notifica
         return
 
     try:
-        doc_date = datetime.strptime(doc_date_str, "%d.%m.%Y")
-        days_left = (doc_date - today).days
+        try:
+            doc_date = datetime.strptime(doc_date_str, "%Y-%m-%d")
+        except ValueError:
+            doc_date = datetime.strptime(doc_date_str, "%d.%m.%Y")
 
+        days_left = (doc_date - today).days
+        print(f"Проверка {doc_type}: {doc_date_str}, осталось дней: {days_left}")
         if days_left in count_days:
             if employer_id not in notifications:
                 notifications[employer_id] = []
@@ -177,3 +173,13 @@ async def send_notifications(notifications):
                 await bot.send_message(chat_id=employer_id, text=message)
         except Exception as e:
             print(f"Failed to send message to {employer_id}: {e}")
+
+
+def str_encode(text: str) -> str:
+    encoded = base64.b64encode(text.encode()).decode()
+    return encoded
+
+
+def str_decode(text: str) -> str:
+    decoded = base64.b64decode(text.encode()).decode()
+    return decoded

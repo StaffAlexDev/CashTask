@@ -5,18 +5,17 @@ from dateutil.relativedelta import relativedelta
 
 from config import USER_ROLES
 from database.db_settings import get_db_connection
-from utils import dict_factory
 
 
 # ========== Employees (Сотрудники) ==========
-def add_employee(telegram_id: int, first_name: str, role: str):
-    """Добавление сотрудника"""
+def add_employee(telegram_id: int, first_name: str, role: str, last_name: str = ''):
+    """Добавляет сотрудника"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO employees (telegram_id, first_name, role) '
-            'VALUES (?, ?, ?)',
-            (telegram_id, first_name, role)
+            'INSERT INTO employees (telegram_id, first_name, last_name, role) '
+            'VALUES (?, ?, ?, ?)',
+            (telegram_id, first_name, last_name, role)
         )
         conn.commit()
 
@@ -138,7 +137,7 @@ def get_employees_cars() -> list:
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM employer_cars")
-        return [row[0] for row in cursor.fetchall()]
+        return [dict(row) for row in cursor.fetchall()]
 
 
 def edit_car_info(action, new_data, car_id):
@@ -335,7 +334,6 @@ def get_financial_report(period: str = 'all') -> dict[str, float | list[dict]]:
         date_condition = f"WHERE created_at >= '{start_date}'"
 
     with get_db_connection() as conn:
-        conn.row_factory = dict_factory
         cursor = conn.cursor()
 
         # 1. Общая сводка по типам операций
@@ -395,8 +393,8 @@ def get_financial_report(period: str = 'all') -> dict[str, float | list[dict]]:
             'total_income': total_income,
             'total_expense': total_expense,
             'profit': total_income - total_expense,
-            'summary': summary,
-            'transactions': transactions
+            'summary': [dict(row) for row in summary],
+            'transactions': [dict(row) for row in transactions]
         }
 
 

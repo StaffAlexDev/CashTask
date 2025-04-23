@@ -17,10 +17,9 @@ def roles_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_access_confirmation() -> InlineKeyboardMarkup:  # тут у нас должны передаваться данные от нового пользователя
-                                                        # в обход state
-    button1 = InlineKeyboardButton(text="Accept", callback_data="accept")
-    button2 = InlineKeyboardButton(text="Reject", callback_data="reject")
+def get_access_confirmation(new_worker) -> InlineKeyboardMarkup:
+    button1 = InlineKeyboardButton(text="Accept", callback_data=f"access_accept_{new_worker}")
+    button2 = InlineKeyboardButton(text="Reject", callback_data=f"access_reject_{new_worker}")
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[[button1, button2]])
     return confirm_kb

@@ -40,13 +40,13 @@ async def choice_role(callback_query: CallbackQuery):
     period_map = get_financial_report(period)
     print(period_map)  # TODO дописать логику вывода данных по периоду
     text = f"""
-        'period': {period_map.get("period")},
-        'start_date': {period_map.get("start_date")},
-        'end_date': {period_map.get("end_date")},
-        'total_income': {period_map.get("total_income")},
-        'total_expense': {period_map.get("total_expense")},
-        'profit': {period_map.get("profit")},
-        'summary': {period_map.get("summary")},
+        'period': {period_map.get("period")},\n
+        'start_date': {period_map.get("start_date")},\n
+        'end_date': {period_map.get("end_date")},\n
+        'total_income': {period_map.get("total_income")},\n
+        'total_expense': {period_map.get("total_expense")},\n
+        'profit': {period_map.get("profit")},\n
+        'summary': {period_map.get("summary")},\n
         'transactions': {period_map.get("transactions")}
     """
     await callback_query.answer(text, show_alert=True)
