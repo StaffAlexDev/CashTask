@@ -48,11 +48,12 @@ def create_tables():
     # Таблица с клиентов
     cursor.execute("""
             CREATE TABLE IF NOT EXISTS clients (
-                clients_id INTEGER PRIMARY KEY AUTOINCREMENT,   -- Уникальный ID пользователя
+                client_id INTEGER PRIMARY KEY AUTOINCREMENT,   -- Уникальный ID пользователя
                 first_name TEXT,                                -- Имя пользователя
                 last_name TEXT NOT NULL DEFAULT '',             -- Фамилия пользователя
-                phone_number TEXT NOT NULL,                     -- Номер телефона
+                phone_number TEXT UNIQUE,                       -- Номер телефона
                 social_network TEXT,                            -- ID пользователя в соц сетях
+                is_deleted INTEGER DEFAULT 0,                   -- удален ли клиент
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Дата регистрации
             );
         """)
@@ -61,13 +62,23 @@ def create_tables():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cars (
             car_id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Уникальный ID машины
-            clients_id INTEGER,                        -- ID владельца машины (клиента)
+            client_id INTEGER,                        -- ID владельца машины (клиента)
             car_brand TEXT,                            -- Марка машины
             car_model TEXT,                            -- Модель машины
-            car_year INTEGER,                          -- Год выпуска
             license_plate TEXT UNIQUE,                 -- Номерной знак
             vin_code TEXT UNIQUE,                      -- VIN
-            FOREIGN KEY (clients_id) REFERENCES clients(clients_id) ON DELETE CASCADE
+            is_deleted INTEGER DEFAULT 0,              -- удалена ли машина
+            FOREIGN KEY (client_id) REFERENCES clients(clients_id) ON DELETE CASCADE
+        );
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS deletion_logs (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_type TEXT NOT NULL,            -- client, car, ...
+            item_id INTEGER NOT NULL,
+            deleted_by INTEGER NOT NULL,        -- telegram_id удаляющего
+            deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
 

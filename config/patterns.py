@@ -1,0 +1,49 @@
+import re
+
+COUNT_DAYS = {1, 2, 7, 14}
+
+INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+
+NAME_PATTERN = r'^[a-zA-Zа-яА-ЯёЁ\-]{2,20}(?:\s[a-zA-Zа-яА-ЯёЁ\-]{2,20})?$'
+PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)
+
+BRAND_PATTERN = r"^[A-Za-zА-Яа-яЁё]+$"
+MODEL_PATTERN = r"^[A-Za-zА-Яа-яЁё0-9\- ]+$"
+VIN_PATTERN = r"^[A-HJ-NPR-Z0-9]{17}$"
+
+DATE_PATTERN = r"^\d{2}\.\d{2}\.\d{4}$"
+
+LICENSE_PLATE_PATTERNS = [
+        # Литва, Латвия, Польша (AB1234, ABC123, 1234AB)
+        r'^[A-Z]{2,3}\d{2,5}$',
+        r'^\d{2,4}[A-Z]{2,3}$',
+
+        # Германия, Франция (AB-123-CD, B XY 1234)
+        r'^[A-Z]{1,3}\d{1,4}[A-Z]{0,2}$',
+
+        # Временные номера (L123456, TR12345)
+        r'^[A-Z]{1,2}\d{5,6}$',
+
+        # Украина (AA1234BB)
+        r'^[A-Z]{2}\d{4}[A-Z]{2}$',
+
+        # Беларусь (1234AB1)
+        r'^\d{4}[A-Z]{2}[1-7]$'
+    ]
+
+SOCIAL_PATTERN = r'''
+    ^(?:https?:\/\/)?                # Опциональный протокол (http/https)
+    (?:www\.)?                       # Опциональный www.
+    (?:                              # Допустимые домены:
+        telegram\.me|t\.me|          # Telegram
+        instagram\.com|              # Instagram
+        wa\.me|                      # WhatsApp
+        viber\.com|                  # Viber
+        tiktok\.com|                 # TikTok
+        facebook\.com|               # Facebook
+        twitter\.com|x\.com          # Twitter/X
+    )
+    \/[a-zA-Z0-9_\-\.]{1,30}\/?$    # Логин (1-30 символов: буквы, цифры, _, -, .)
+    |                                # ИЛИ
+    ^@[a-zA-Z0-9_\-\.]{3,30}$       # Никнейм (начинается с @, 3-30 символов)
+'''

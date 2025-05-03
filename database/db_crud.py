@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
 
-from config import USER_ROLES
 from database.db_settings import get_db_connection
+from utils.enums import Role
 
 
 # ========== Employees (Сотрудники) ==========
@@ -20,21 +20,21 @@ def add_employee(telegram_id: int, first_name: str, role: str, last_name: str = 
         conn.commit()
 
 
-def get_employee_by_telegram_id(telegram_id: int):
+def get_employee_by_telegram_id(telegram_id: int) -> dict:
     """Получение сотрудника по telegram_id"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM employees WHERE telegram_id = ?', (telegram_id,))
-        return cursor.fetchone()[0]
+        return dict(cursor.fetchone())
 
 
 def get_workers():
     """Получение работников"""
-    worker = USER_ROLES[0]
+    worker = Role.WORKER
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM employees WHERE role = ?', (worker,))
-        return cursor.fetchone()[0]
+        return dict(cursor.fetchone())
 
 
 def update_employee_role(telegram_id: int, new_role: str):
@@ -53,7 +53,7 @@ def get_role_by_telegram_id(telegram_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT role FROM employees WHERE telegram_id = ?', (telegram_id,))
-        return cursor.fetchone()[0]
+        return cursor.fetchone()
 
 
 # ========== Employee Approvals (Подтверждения сотрудников) ==========
@@ -81,21 +81,21 @@ def get_approved_employees(approver_id: int) -> list:
         return [row[0] for row in cursor.fetchall()]
 
 
-def get_approver_employees_telegram_id(role: str) -> list:
-    """Получение списка сотрудников кто будет подтверждать нового сотрудника"""
+def get_approver_employees_telegram_id(role: Role) -> list[int]:
+    """Получить сотрудников с ролями выше для подтверждения"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        index = USER_ROLES.index(role)
-        approver = USER_ROLES[index + 1]
-        print("МЫ в методе получения сотрудника на ранг выше")
-        print(f"USER_ROLES: {USER_ROLES}")
-        print(f"role: {role}")
-        print(f"USER_ROLES.index(role): {index}")
-        print(f"approver {approver}")
-        cursor.execute("""
-                SELECT telegram_id FROM employees WHERE role = ?
-        """, (approver,))
-        return [row[0] for row in cursor.fetchall()]
+
+        upper_roles = Role.get_upper_roles(role)
+
+        for upper_role in upper_roles:
+            cursor.execute("SELECT telegram_id FROM employees WHERE role = ?", (upper_role.value,))
+            result = cursor.fetchall()
+
+            if result:
+                return [row[0] for row in result]
+
+        return []
 
 
 # Для автомобилей сотрудников
@@ -140,6 +140,16 @@ def get_employees_cars() -> list:
         return [dict(row) for row in cursor.fetchall()]
 
 
+def get_all_employees(role: str = None) -> list[dict]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if role:
+            cursor.execute('SELECT * FROM employees WHERE role = ?', (role,))
+        else:
+            cursor.execute('SELECT * FROM employees')
+        return [dict(row) for row in cursor.fetchall()]
+
+
 def edit_car_info(action, new_data, car_id):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -149,16 +159,26 @@ def edit_car_info(action, new_data, car_id):
         return cursor.rowcount
 
 
-def delete_car_by_id(employer_id, car_id):
+def delete_car_by_id(car_id: int, deleted_by: int) -> bool:
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM employer_cars WHERE employer_id = ? AND car_id = ?",
-                       (employer_id, car_id))
-        return cursor.rowcount > 0
+
+        cursor.execute(
+            'UPDATE cars SET is_deleted = 1 WHERE car_id = ?', (car_id,)
+        )
+
+        if cursor.rowcount:
+            cursor.execute(
+                'INSERT INTO deletion_logs (item_type, item_id, deleted_by) VALUES (?, ?, ?)',
+                ('car', car_id, deleted_by)
+            )
+            conn.commit()
+            return True
+        return False
 
 
 # ========== Clients (Клиенты) ==========
-def add_client(first_name: str, last_name: str, phone_number: str, social_network: int = None):
+def add_client(first_name: str, phone_number: str, last_name: str = None, social_network: int = None):
     """Добавление клиента"""
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -170,6 +190,13 @@ def add_client(first_name: str, last_name: str, phone_number: str, social_networ
         conn.commit()
 
 
+def get_all_clients():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM clients WHERE is_deleted = 0')
+        return [dict(row) for row in cursor.fetchall()]
+
+
 def get_client_id_by_phone_number(phone_number: str):
     """Получение клиента по telegram_id"""
     with get_db_connection() as conn:
@@ -178,17 +205,92 @@ def get_client_id_by_phone_number(phone_number: str):
         return cursor.fetchone()
 
 
-# ========== Cars (Автомобили) ==========
-def add_car(client_id: int, car_brand: str, car_model: str, car_year: int, license_plate: str, vin_code: str = None):
-    """Добавление автомобиля"""
+def get_client_id_by_name(client_name: str):
+    """Получение клиента по telegram_id"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM clients WHERE first_name = ?', (client_name,))
+        return cursor.fetchall()
+
+
+def get_client_by_id(client_id: int):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM clients WHERE client_id = ?', (client_id,))
+        return cursor.fetchone()
+
+
+def delete_client_by_phone_number(phone_number: str):
+    """Получение клиента по telegram_id"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM clients WHERE phone_number = ?', (phone_number,))
+        return cursor.fetchone()
+
+
+def delete_client_by_id(client_id: int, deleted_by: int) -> bool:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            'UPDATE clients SET is_deleted = 1 WHERE client_id = ?', (client_id,)
+        )
+
+        if cursor.rowcount:
+            cursor.execute(
+                'INSERT INTO deletion_logs (item_type, item_id, deleted_by) VALUES (?, ?, ?)',
+                ('client', client_id, deleted_by)
+            )
+            conn.commit()
+            return True
+        return False
+
+
+def restore_client_by_id(client_id: int) -> bool:
+    """
+    Восстанавливает клиента, помеченного как удалённого.
+    """
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO cars (clients_id, car_brand, car_model, car_year, license_plate, vin_code) '
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            (client_id, car_brand, car_model, car_year, license_plate, vin_code)
+            'UPDATE clients SET is_deleted = 0 WHERE client_id = ? AND is_deleted = 1',
+            (client_id,)
         )
         conn.commit()
+        return cursor.rowcount > 0
+
+
+# ========== Client Cars ==========
+def add_car(client_id: int, car_brand: str, car_model: str,
+            license_plate: str, vin_code: str | None = None) -> tuple[bool, str]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Проверка дубликатов
+        cursor.execute('''
+            SELECT 
+                CASE WHEN license_plate = ? THEN 'номер' ELSE NULL END as plate_dup,
+                CASE WHEN vin_code = ? THEN 'VIN' ELSE NULL END as vin_dup
+            FROM cars 
+            WHERE license_plate = ? OR vin_code = ?
+        ''', (license_plate, vin_code, license_plate, vin_code))
+
+        duplicates = [x for x in cursor.fetchone() if x]
+
+        if duplicates:
+            return False, f"Автомобиль с таким {' и '.join(duplicates)} уже существует"
+
+        try:
+            cursor.execute('''
+                INSERT INTO cars (client_id, car_brand, car_model, license_plate, vin_code)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (client_id, car_brand, car_model, license_plate, vin_code))
+            conn.commit()
+            return True, ""
+
+        except Exception as e:
+            conn.rollback()
+            return False, f"Ошибка базы данных: {str(e)}"
 
 
 def get_client_cars(client_id: int):
@@ -237,6 +339,36 @@ def get_cars_and_owner_by_model(model: str):
         return cursor.fetchall()
 
 
+def get_all_cars():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM cars WHERE is_deleted = 0')
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def delete_employer_car_by_id(car_id: int, employer_id: int) -> bool:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE cars SET is_deleted = 1 WHERE car_id = ? AND employer_id = ?', (car_id, employer_id)
+        )
+        return cursor.rowcount > 0
+
+
+def restore_car_by_id(car_id: int) -> bool:
+    """
+    Восстанавливает автомобиль, помеченный как удалённый.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE cars SET is_deleted = 0 WHERE car_id = ? AND is_deleted = 1',
+            (car_id,)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 # ========== Orders (Заказы) ==========
 def add_order(car_id: int, description: str, status: str = 'new', worker_id: int = None):
     """Добавление заказа"""
@@ -272,6 +404,16 @@ def update_order_status(order_id: int, new_status: str):
             (new_status, order_id)
         )
         conn.commit()
+
+
+def get_all_orders(status: str = None) -> list[dict]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if status:
+            cursor.execute('SELECT * FROM orders WHERE status = ?', (status,))
+        else:
+            cursor.execute('SELECT * FROM orders')
+        return [dict(row) for row in cursor.fetchall()]
 
 
 # ========== Finances (Финансы) ==========
@@ -428,6 +570,16 @@ def update_task_status(task_id: int, new_status: str):
             (new_status, task_id)
         )
         conn.commit()
+
+
+def get_all_tasks(assigned_to: int = None) -> list[dict]:
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if assigned_to:
+            cursor.execute('SELECT * FROM tasks WHERE assigned_to = ?', (assigned_to,))
+        else:
+            cursor.execute('SELECT * FROM tasks')
+        return [dict(row) for row in cursor.fetchall()]
 
 
 def insert_test_clients_and_cars():

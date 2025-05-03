@@ -12,5 +12,43 @@
   },
   "start_menu": {
     "welcome": "Hello, how can I help you?"
+  },
+  "roles": {
+    "worker": "Worker",
+    "admin": "Admin",
+    "supervisor": "Supervisor",
+    "regional_admin": "Regional Admin",
+    "superadmin": "Super Admin"
+  },
+  "order_statuses": {
+    "new": "New",
+    "in_progress": "In progress",
+    "done": "Done"
+  },
+  "task_statuses": {
+      "in_progress": "In progress",
+      "done": "Done"
+  },
+  "finance_types": {
+      "income": "Income",
+      "expense": "Expense",
+      "fuel": "Fuel"
+  },
+  "periods": {
+    "day": "Day",
+    "week": "Week",
+    "two_weeks": "Two weeks",
+    "month": "Month",
+    "all": "All time"
+  },
+  "ui_buttons": {
+    "car_in_work": "Car in work",
+    "materials": "Need materials",
+    "tasks": "Tasks",
+    "new_order": "New Order",
+    "order_in_work": "Order in work",
+    "add_task": "Add task",
+    "what_buy": "What to buy",
+    "reports": "Reports"
   }
 }

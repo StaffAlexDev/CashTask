@@ -6,28 +6,28 @@ from database.db_crud import get_car_id_by_license_plate, get_car_by_id, get_car
     get_client_id_by_phone_number, get_client_cars, add_order
 from database.state_models import OrderStates
 from handlers.admins import admins
-from keyboards.admins import order_type_kb, get_employer_kb, get_confirmation_kb, get_cars_kb
-from keyboards.general import get_car_keyboard_from_list
-from utils import is_likely_license_plate, normalize_number, is_phone_number
+from keyboards.admins import order_type_kb, get_employer_kb, get_confirmation_kb
+from keyboards.general import get_car_keyboard_from_list, get_cars_kb
+from utils.validators import is_likely_license_plate, normalize_number, is_phone_number
 
 
 @admins.message(F.data == "new_order")
-async def order_menu(callback_query: CallbackQuery):
-    await callback_query.answer()
-    await callback_query.message.answer("Выбери тип", reply_markup=order_type_kb())
+async def order_menu(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer("Выбери тип", reply_markup=order_type_kb())
 
 
 @admins.message(F.data.startswith("by_"))
-async def order_menu(callback_query: CallbackQuery, state: FSMContext):
-    await callback_query.answer()
-    choice = callback_query.data.split("_")[1]
+async def order_menu(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    choice = callback.data.split("_")[1]
     match choice:
         case "client":
             await state.set_state(OrderStates.waiting_for_client)
-            await callback_query.message.answer("Введи номер телефона клиента")
+            await callback.message.answer("Введи номер телефона клиента")
         case "car":
             await state.set_state(OrderStates.waiting_for_car)
-            await callback_query.message.answer("Введи номер авто или модель")
+            await callback.message.answer("Введи номер авто или модель")
 
 
 # Обработка выбора автомобиля
@@ -83,15 +83,15 @@ async def process_car_selection_by_client(message: Message, state: FSMContext):
 
 
 @admins.message(F.data.startswith("car_id_"))
-async def order_menu(callback_query: CallbackQuery, state: FSMContext):
-    car_id = callback_query.data.split("_")[2]
+async def order_menu(callback: CallbackQuery, state: FSMContext):
+    car_id = callback.data.split("_")[2]
     car = get_car_by_id(car_id)
     await state.update_data(car_id=car_id)
     await state.update_data(car=car)
     await state.set_state(OrderStates.waiting_for_service)
-    await callback_query.message.answer("Введите работы: Можно список работ через запятую!\n"
-                                        "Также можете в скобках указать цену работ. Пример:\n"
-                                        "рихтовка(цена), ...")
+    await callback.message.answer("Введите работы: Можно список работ через запятую!\n"
+                                  "Также можете в скобках указать цену работ. Пример:\n"
+                                  "рихтовка(цена), ...")
 
 
 @admins.callback_query(OrderStates.waiting_for_service)
@@ -110,14 +110,14 @@ async def process_service_selection(message: Message, state: FSMContext):
 
 
 @admins.callback_query(F.data.startswith("employer_"), OrderStates.waiting_for_employer)
-async def process_employer_selection(callback_query: CallbackQuery, state: FSMContext):
+async def process_employer_selection(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     car_model = data["car"]["car_model"]
     license_plate = data["car"]["license_plate"]
     service = data["service"]
-    employees = callback_query.data.split("_")[1]
+    employees = callback.data.split("_")[1]
     await state.update_data(employer=employees)
-    await callback_query.message.answer(
+    await callback.message.answer(
         f"Вы выбрали:\n"
         f"Автомобиль: {car_model}, {license_plate}\n"
         f"Услуга: {" ".join(service)}\n"
@@ -127,42 +127,42 @@ async def process_employer_selection(callback_query: CallbackQuery, state: FSMCo
 
 
 @admins.callback_query(F.data == "confirm", OrderStates.waiting_for_order_confirmation)
-async def process_confirm(callback_query: CallbackQuery, state: FSMContext):
+async def process_confirm(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     car_id = data["car_id"]
     description = data["service"]
-    employees = data["employees"]
+    employees = data["employer"]
     await add_order(car_id=car_id, description=description, worker_id=employees)
-    await callback_query.message.answer("Заказ успешно оформлен!")
+    await callback.message.answer("Заказ успешно оформлен!")
     await state.clear()
 
 
 @admins.callback_query(F.data == "back")
-async def process_back(callback_query: CallbackQuery, state: FSMContext):
+async def process_back(callback: CallbackQuery, state: FSMContext):
     current_state = await state.get_state()
 
     if current_state == OrderStates.waiting_for_service:
         # Возврат к выбору авто
-        user_id = callback_query.from_user.id
+        user_id = callback.from_user.id
         cars = await get_client_cars(user_id)
-        await callback_query.message.answer("Выберите автомобиль:", reply_markup=get_cars_kb(cars))
+        await callback.message.answer("Выберите автомобиль:", reply_markup=get_cars_kb(cars))
         await state.set_state(OrderStates.waiting_for_car)
 
     elif current_state == OrderStates.waiting_for_order_confirmation:
         # Возврат к выбору услуги
-        await callback_query.message.answer("Введите работы: Можно список работ через запятую!\n"
-                                            "Также можете в скобках указать цену работ. Пример:\n"
-                                            "рихтовка(цена), ...")
+        await callback.message.answer("Введите работы: Можно список работ через запятую!\n"
+                                      "Также можете в скобках указать цену работ. Пример:\n"
+                                      "рихтовка(цена), ...")
         await state.set_state(OrderStates.waiting_for_service)
 
     elif current_state == OrderStates.waiting_for_car:
-        await callback_query.message.answer("Вы вернулись назад. Введи номер авто или модель.")
+        await callback.message.answer("Вы вернулись назад. Введи номер авто или модель.")
         await state.set_state(OrderStates.waiting_for_car)
     else:
-        await callback_query.message.answer("Не удалось вернуться назад — неизвестное состояние.")
+        await callback.message.answer("Не удалось вернуться назад — неизвестное состояние.")
 
 
 @admins.callback_query(F.data == "cancel", OrderStates.waiting_for_order_confirmation)
-async def process_cancel_from_confirmation(callback_query: CallbackQuery, state: FSMContext):
-    await callback_query.message.answer("Заказ отменен.")
+async def process_cancel_from_confirmation(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Заказ отменен.")
     await state.clear()

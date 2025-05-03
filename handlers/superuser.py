@@ -1,13 +1,15 @@
 import os
 
-from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from dotenv import find_dotenv, load_dotenv
 from aiogram import Router, F
 
-from database.db_crud import get_financial_report, add_employee
-from keyboards.general import menu_by_role
+from database.db_crud import get_financial_report, add_employee, restore_client_by_id, restore_car_by_id
+from database.state_models import UserCookies
+from keyboards.general.other import enum_kb
+from keyboards.general.parsers import parse_enum_callback
 from keyboards.superuser import period_by_report_kb
+from utils.enums import Period
 
 load_dotenv(find_dotenv())
 superuser = Router()
@@ -25,29 +27,53 @@ async def admin_password(message: Message):
                  last_name=last_name,
                  role=role)
 
-    await message.answer("Привет Superadmin", reply_markup=menu_by_role(role))
+    await message.answer("Привет Superadmin")
 
 
-async def choice_period(callback_query: CallbackQuery):
-    await callback_query.answer()
-    await callback_query.message.answer("Выберите период", reply_markup=period_by_report_kb())
+async def choice_period(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer("Выберите период", reply_markup=period_by_report_kb())
 
 
-@superuser.callback_query(F.data.startswith('period_'))
-async def choice_role(callback_query: CallbackQuery):
+@superuser.callback_query(F.data == "choose_period")
+async def choose_period(callback: CallbackQuery, user: UserCookies):
+    lang = user.get_lang()
+    await callback.message.edit_text(
+        "Выберите период для отчета:",
+        reply_markup=enum_kb(Period, lang, callback_prefix="period")
+    )
 
-    period = callback_query.data.split("_")[1]
-    period_map = get_financial_report(period)
-    print(period_map)  # TODO дописать логику вывода данных по периоду
-    text = f"""
-        'period': {period_map.get("period")},\n
-        'start_date': {period_map.get("start_date")},\n
-        'end_date': {period_map.get("end_date")},\n
-        'total_income': {period_map.get("total_income")},\n
-        'total_expense': {period_map.get("total_expense")},\n
-        'profit': {period_map.get("profit")},\n
-        'summary': {period_map.get("summary")},\n
-        'transactions': {period_map.get("transactions")}
-    """
-    await callback_query.answer(text, show_alert=True)
 
+@superuser.callback_query(F.data.startswith("period_"))
+async def period_selected(callback: CallbackQuery, user: UserCookies):
+    period = parse_enum_callback(callback.data, "period", Period)
+
+    if period is None:
+        await callback.answer("❗ Ошибка выбора периода", show_alert=True)
+        return
+
+    report = get_financial_report(period=period.value)
+
+    await callback.message.edit_text(f"Ваш отчет за период {period.display_name(user.get_lang())}:\n{report}")
+
+
+@superuser.callback_query(F.data.startswith("item_") & F.data.endswith("_restore"))
+async def handle_restore(callback: CallbackQuery, user: UserCookies):
+    _, item_type, item_id, _ = callback.data.split("_")
+    item_id = int(item_id)
+
+    if user.get_role().value != "superadmin":
+        await callback.answer("⛔ Только для суперюзеров", show_alert=True)
+        return
+
+    if item_type == "client":
+        success = restore_client_by_id(item_id)
+        msg = "Клиент восстановлен" if success else "Не удалось восстановить клиента"
+    elif item_type == "car":
+        success = restore_car_by_id(item_id)
+        msg = "Авто восстановлено" if success else "Не удалось восстановить авто"
+    else:
+        msg = "Невозможно восстановить этот тип"
+
+    await callback.message.edit_text(f"✅ {msg}")
+    await callback.answer()

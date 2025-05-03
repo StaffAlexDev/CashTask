@@ -2,15 +2,13 @@ import os
 
 from aiogram import Router, F
 from aiogram.filters import Command, StateFilter
-from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import LANGUAGE_DIR, USER_ROLES
-from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id
+from config.constants import LANGUAGE_DIR
+from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id, get_orders_by_worker
 from database.state_models import UserCookies
-from keyboards.admins import get_type_finance_kb
-from keyboards.general import roles_kb, menu_by_role, order_menu_kb, car_park_menu_kb, clients_menu_kb
+from keyboards.admins import get_type_finance_kb, clients_menu_kb
 
 commands = Router()
 
@@ -18,28 +16,29 @@ commands = Router()
 @commands.message(Command("start"))
 async def command_start(message: Message):
     user_id = message.from_user.id
-    user_db = get_employee_by_telegram_id(user_id)
     user = UserCookies(user_id)
+    user_role = user.get_role()
     lang = user.get_lang()
-    print(user_db)
+
+    print(user.get_role())
     print(message.from_user.first_name)
     print(message.from_user.last_name)
-    if user_db is None:
+
+    if user_role is None:
         await message.answer(lang.get("unknown_user").get("greetings"), reply_markup=roles_kb())
 
     else:
-        user_role = user_db.get_role()
         await message.answer(lang.get("language").get("select_lang"), reply_markup=menu_by_role(user_role))
 
 
 @commands.message(Command('menu'))
 async def command_menu(message: Message):
     user_id = message.from_user.id
-    role = get_role_by_telegram_id(user_id)
     user = UserCookies(user_id)
+    user_role = user.get_role()
     lang = user.get_lang()
-    if role is not None:
-        await message.answer('Привет', reply_markup=menu_by_role(role))
+    if user_role is not None:
+        await message.answer('Привет', reply_markup=menu_by_role(user_role))
     else:
         await message.answer("У вас нет доступа!")
 
@@ -47,9 +46,18 @@ async def command_menu(message: Message):
 @commands.message(Command('orders'))
 async def orders_menu(message: Message):
     telegram_id = message.from_user.id
-    role = get_role_by_telegram_id(telegram_id)
-    if role in USER_ROLES[1:]:
-        await message.answer('Что делаем?', reply_markup=order_menu_kb(role))
+    user = UserCookies(telegram_id)
+    user_role = user.get_role()
+    if user_role in USER_ROLES[1:]:
+        await message.answer('Что делаем?', reply_markup=order_menu_kb(user_role))
+    elif user_role == USER_ROLES[0]:
+        orders_list = get_orders_by_worker(telegram_id)
+
+        if orders_list:
+            print(orders_list)
+            # await message.answer('Вот список', reply_markup=get_cars_kb(orders_list))
+        else:
+            await message.answer('У вас нет выполняемых нарядов')
     else:
         await message.answer("У вас нет доступа!")
 

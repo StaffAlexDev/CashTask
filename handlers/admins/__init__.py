@@ -1,5 +1,6 @@
 from aiogram import Router
 
-from . import finances, orders
-
 admins = Router()
+
+from . import clients, finances, orders, other
+

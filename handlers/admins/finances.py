@@ -9,27 +9,27 @@ from keyboards.admins import get_finance_kb
 
 
 @admins.callback_query(F.data.startswith("finance_"))
-async def finance_income(callback_query: CallbackQuery, state: FSMContext):
-    type_finance = callback_query.data.split("_")[1]
+async def finance_income(callback: CallbackQuery, state: FSMContext):
+    type_finance = callback.data.split("_")[1]
     if type_finance == "report":
         pass
     else:
         await state.update_data(type_finance=type_finance)
-        await callback_query.message.edit_text("Выберите тип дохода!", reply_markup=get_finance_kb())
-    await callback_query.answer()
+        await callback.message.edit_text("Выберите тип дохода!", reply_markup=get_finance_kb())
+    await callback.answer()
 
 
 @admins.callback_query(F.data == "from_car")
-async def income_from_the_car(callback_query: CallbackQuery):
-    await callback_query.answer()
+async def income_from_the_car(callback: CallbackQuery):
+    await callback.answer()
 
 
 @admins.callback_query(F.data == "general")
-async def income_from_the_car(callback_query: CallbackQuery, state: FSMContext):
-    await state.update_data(type_investments=callback_query.data)
+async def income_from_the_car(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(type_investments=callback.data)
     await state.set_state(FinanceStates.investments)
-    await callback_query.answer()
-    await callback_query.message.answer("Введите сумму и \nописание с новой строки:")
+    await callback.answer()
+    await callback.message.answer("Введите сумму и \nописание с новой строки:")
 
 
 @admins.message(FinanceStates.investments)

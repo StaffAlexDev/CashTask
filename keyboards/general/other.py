@@ -1,20 +1,63 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from enum import Enum
+
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import BUTTONS_FOR_ROLE, BUTTONS, USER_ROLES
+from config.buttons_config import BUTTONS_FOR_ROLE, BUTTONS
+from utils.enums import Role
 
 
-def roles_kb() -> InlineKeyboardMarkup:
-    roles = USER_ROLES[:-1]
-    print(roles)
+def enum_kb(enum_cls: type[Enum],
+            lang_data: dict,
+            callback_prefix: str,
+            exclude: list = None,
+            per_row: int = 2) -> InlineKeyboardMarkup:
+    """
+    Универсальная функция для создания клавиатуры на основе Enum.
+
+    :param enum_cls: Класс Enum (должен быть BaseEnum или совместимым)
+    :param lang_data: Локализация пользователя (dict)
+    :param callback_prefix: Префикс для callback_data
+    :param exclude: Список элементов Enum для исключения (по умолчанию None)
+    :param per_row: Сколько кнопок в ряду
+    :return: InlineKeyboardMarkup
+    """
+    exclude = exclude or []
     builder = InlineKeyboardBuilder()
-    print("Создание клавиатуры для роли")
-    for role in roles:
-        builder.button(text=role, callback_data=f"role_{role}")
 
-        print(f"callback_data: {role}")
-    builder.adjust(2)  # Распределяем кнопки по 2 в ряд
+    for item in enum_cls:
+        if item in exclude:
+            continue
+
+        if hasattr(item, "display_name"):
+            display_text = item.display_name(lang_data)
+        else:
+            display_text = item.value
+
+        builder.button(text=display_text, callback_data=f"{callback_prefix}_{item.value}")
+
+    builder.adjust(per_row)
     return builder.as_markup()
+
+
+def get_ui_button(name: str, lang_data: dict) -> InlineKeyboardButton:
+    text = lang_data.get("ui_buttons", {}).get(name, name)  # Фолбэк на name если перевода нет
+    return InlineKeyboardButton(text=text, callback_data=name)
+
+
+def ui_buttons_kb(button_names: list[str], lang_data: dict, per_row: int = 2) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for name in button_names:
+        builder.add(get_ui_button(name, lang_data))
+
+    builder.adjust(per_row)
+    return builder.as_markup()
+
+
+def ui_buttons_for_role(role: Role, lang_data: dict) -> InlineKeyboardMarkup:
+    button_keys = BUTTONS_FOR_ROLE.get(role.value, [])
+    return ui_buttons_kb(button_keys, lang_data)
 
 
 def get_access_confirmation(new_worker) -> InlineKeyboardMarkup:
@@ -44,18 +87,6 @@ def order_menu_kb(role: str) -> InlineKeyboardMarkup:
 
     if role == 'superadmin':
         builder.add(InlineKeyboardButton(text="Completed orders", callback_data="completed_orders"))
-
-    builder.adjust(2)
-    return builder.as_markup()
-
-
-def clients_menu_kb() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.add(InlineKeyboardButton(text="Add client", callback_data="add_client"))
-    builder.add(InlineKeyboardButton(text="Add car", callback_data="add_car"))
-    builder.add(InlineKeyboardButton(text="Clients", callback_data="all_clients"))
-    builder.add(InlineKeyboardButton(text="Cars", callback_data="all_cars"))
 
     builder.adjust(2)
     return builder.as_markup()
@@ -100,5 +131,16 @@ def employer_car_menu_kb(car_id):
     builder.add(InlineKeyboardButton(text="Номерной знак", callback_data=f"employer_car_{car_id}_plate"))
     builder.add(InlineKeyboardButton(text="Техосмотр", callback_data=f"employer_car_{car_id}_inspection"))
     builder.add(InlineKeyboardButton(text="Страховка", callback_data=f"employer_car_{car_id}_insurance"))
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def get_cars_kb(cars):
+    builder = InlineKeyboardBuilder()
+    for car in cars:
+        builder.add(
+            InlineKeyboardButton(text=f"{car['car_brand']} {car['car_model']}",
+                                 callback_data=f"car_{car['car_id']}"))
+    builder.add(InlineKeyboardButton(text="Отменить", callback_data="cancel"))
     builder.adjust(2)
     return builder.as_markup()

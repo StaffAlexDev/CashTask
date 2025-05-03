@@ -3,7 +3,8 @@ from json import load
 from aiogram.fsm.state import State, StatesGroup
 
 from database.db_settings import get_db_connection
-from config import LANGUAGE_DIR
+from config.constants import LANGUAGE_DIR
+from utils.enums import Role
 
 
 class OrderStates(StatesGroup):
@@ -14,8 +15,9 @@ class OrderStates(StatesGroup):
     waiting_for_order_confirmation = State()  # Ожидание подтверждения
 
 
-# class UserRegistrationObject(StatesGroup):
-#     waiting_for_confirmation = State()
+class ClientStates(StatesGroup):
+    new_client_data = State()
+    new_car_data = State()
 
 
 class FinanceStates(StatesGroup):
@@ -24,9 +26,9 @@ class FinanceStates(StatesGroup):
     waiting_for_photo = State()
 
 
-class EmployerCarParkMenu(StatesGroup):
-    waiting_for_new_car = State()
-    waiting_for_new_data_for_car = State()
+class EmployerState(StatesGroup):
+    waiting_new_car = State()
+    new_data_for_car = State()
 
 
 class UserCookies:
@@ -47,7 +49,7 @@ class UserCookies:
             print(f"Ошибка при загрузке языкового файла: {e}")
             return {}
 
-    def get_role(self):
+    def get_role(self) -> Role:
         if self.role is None:
             try:
                 with get_db_connection() as conn:
@@ -59,11 +61,11 @@ class UserCookies:
                     if result:
                         self.role = result[0]
                     else:
-                        self.role = "user"
+                        self.role = Role.WORKER.value
             except Exception as e:
                 print(f"Ошибка при получении роли из базы: {e}")
-                self.role = "worker"
-        return self.role
+                self.role = Role.WORKER.value
+        return Role(self.role)
 
     def update_profile(self, lang=None, role=None):
         try:

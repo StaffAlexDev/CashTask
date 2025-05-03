@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import PERIOD_BUTTONS
+from config.buttons_config import PERIOD_BUTTONS
 
 
 def period_by_report_kb():
@@ -13,3 +13,6 @@ def period_by_report_kb():
     builder.adjust(2)
 
     return builder.as_markup()
+
+
+
