@@ -2,7 +2,15 @@ import re
 
 COUNT_DAYS = {1, 2, 7, 14}
 
-INVOICE_PATTERN = re.compile(r"(-?\d{1,5})\s+(расход|приход)\s*,?\s*(.+)", re.IGNORECASE)
+INVOICE_PATTERN = re.compile(
+    r"(?P<amount>[+-]?\d{1,5})\s+(?P<payment_type>[^\s,]+)\s*,?\s*(?P<description>.+\S)",
+    re.IGNORECASE
+)
+
+PAYMENT_TYPE_PATTERNS = {
+    "нал": ["нал", "налл", "налик", "нл"],
+    "безнал": ["безнал", "бнал", "бзнал", "бзнл", "бз"]
+}
 
 NAME_PATTERN = r'^[a-zA-Zа-яА-ЯёЁ\-]{2,20}(?:\s[a-zA-Zа-яА-ЯёЁ\-]{2,20})?$'
 PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)

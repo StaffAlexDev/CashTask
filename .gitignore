@@ -3,6 +3,7 @@
 .idea
 __pycache__
 utils/google_sheets.py
-telegram-bot-sheets-455420-a9a3e9682720.json
-praktika.py
+utils/telegram-bot-sheets-455420-a9a3e9682720.json
+hlam/praktika.py
 /database/cash_task.db
+/hlam/

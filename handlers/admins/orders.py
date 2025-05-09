@@ -2,12 +2,12 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from database.db_crud import get_car_id_by_license_plate, get_car_by_id, get_cars_and_owner_by_model, \
-    get_client_id_by_phone_number, get_client_cars, add_order
+from database.clients_pg import get_car_by_id, get_car_id_by_license_plate, get_cars_and_owner_by_model, \
+    get_client_cars, get_client_id_by_phone_number
+from database.orders_pg import add_order
 from database.state_models import OrderStates
 from handlers.admins import admins
-from keyboards.admins import order_type_kb, get_employer_kb, get_confirmation_kb
-from keyboards.general import get_car_keyboard_from_list, get_cars_kb
+from keyboards.admins import order_type_kb, get_confirmation_kb
 from utils.validators import is_likely_license_plate, normalize_number, is_phone_number
 
 
@@ -37,7 +37,7 @@ async def process_car_selection(message: Message, state: FSMContext):
 
     if is_likely_license_plate(data):
 
-        car_id = get_car_id_by_license_plate(data)
+        car_id = await get_car_id_by_license_plate(data)
         car = get_car_by_id(car_id)
         await state.update_data(car_id=car_id)
         await state.update_data(car=car)
@@ -61,8 +61,8 @@ async def process_car_selection_by_client(message: Message, state: FSMContext):
     phone = normalize_number(message.text)
     if is_phone_number(phone):
 
-        client_id = get_client_id_by_phone_number(phone)
-        client_cars = get_client_cars(client_id)
+        client_id = await get_client_id_by_phone_number(phone)
+        client_cars = await get_client_cars(client_id)
 
         if not client_cars:
             await message.answer("У клиента нет машин, нужно добавить хотя-бы одну машину")
@@ -84,8 +84,8 @@ async def process_car_selection_by_client(message: Message, state: FSMContext):
 
 @admins.message(F.data.startswith("car_id_"))
 async def order_menu(callback: CallbackQuery, state: FSMContext):
-    car_id = callback.data.split("_")[2]
-    car = get_car_by_id(car_id)
+    car_id: int = int(callback.data.split("_")[2])
+    car = await get_car_by_id(car_id)
     await state.update_data(car_id=car_id)
     await state.update_data(car=car)
     await state.set_state(OrderStates.waiting_for_service)

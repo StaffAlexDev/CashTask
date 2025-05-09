@@ -1,7 +1,8 @@
 import os
 
-IGNORED_DIRS = {".venv_cashtask", ".idea", "__pycache__"}
+IGNORED_DIRS = {".idea", "__pycache__", ".git", "venv", ".dokadancevenv"}
 IGNORED_FILES = {".env"}
+VENV_PREFIX = ".venv"
 
 
 def is_code_line(line: str) -> bool:
@@ -29,8 +30,10 @@ def count_code_lines_in_project(directory, extensions=(".py",)):
     files_counted = 0
 
     for root, dirs, files in os.walk(directory):
-
-        dirs[:] = [d for d in dirs if d not in IGNORED_DIRS]
+        dirs[:] = [
+            d for d in dirs
+            if d not in IGNORED_DIRS and not d.startswith(VENV_PREFIX)
+        ]
 
         for file in files:
             if file in IGNORED_FILES:
@@ -52,7 +55,30 @@ def count_code_lines_in_project(directory, extensions=(".py",)):
     return total_code_lines
 
 
-if __name__ == "__main__":
-    project_dir = "./"
+def print_project_structure(directory, prefix=""):
+    """Выводит дерево файлов проекта"""
+    entries = os.listdir(directory)
+    entries = [
+        e for e in entries
+        if e not in IGNORED_DIRS and e not in IGNORED_FILES and not e.startswith(VENV_PREFIX)]
+    entries.sort()
 
-    count_code_lines_in_project(project_dir)
+    for index, entry in enumerate(entries):
+        path = os.path.join(directory, entry)
+        connector = "└── " if index == len(entries) - 1 else "├── "
+
+        print(prefix + connector + entry)
+
+        if os.path.isdir(path):
+            extension = "    " if index == len(entries) - 1 else "│   "
+            print_project_structure(path, prefix + extension)
+
+
+if __name__ == "__main__":
+    project_dir = os.path.dirname(__file__)
+
+    print("=== Project Structure ===")
+    print_project_structure(project_dir)
+
+    # print("\n=== Code Lines Stats ===")
+    # count_code_lines_in_project(project_dir)

@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Iterable, Union
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -7,41 +8,36 @@ from config.buttons_config import BUTTONS_FOR_ROLE, BUTTONS
 from utils.enums import Role
 
 
-def enum_kb(enum_cls: type[Enum],
-            lang_data: dict,
-            callback_prefix: str,
-            exclude: list = None,
-            per_row: int = 2) -> InlineKeyboardMarkup:
-    """
-    Универсальная функция для создания клавиатуры на основе Enum.
+def enum_kb(
+    items: Iterable[Union[Enum, str]],
+    lang_data: dict,
+    callback_prefix: str,
+    per_row: int = 2
+) -> InlineKeyboardMarkup:
 
-    :param enum_cls: Класс Enum (должен быть BaseEnum или совместимым)
-    :param lang_data: Локализация пользователя (dict)
-    :param callback_prefix: Префикс для callback_data
-    :param exclude: Список элементов Enum для исключения (по умолчанию None)
-    :param per_row: Сколько кнопок в ряду
-    :return: InlineKeyboardMarkup
-    """
-    exclude = exclude or []
     builder = InlineKeyboardBuilder()
 
-    for item in enum_cls:
-        if item in exclude:
-            continue
+    for item in items:
+        if isinstance(item, Enum):
+            callback_value = str(item.value).strip()
+            text = item.display_name(lang_data) if hasattr(item, "display_name") else callback_value
 
-        if hasattr(item, "display_name"):
-            display_text = item.display_name(lang_data)
         else:
-            display_text = item.value
+            callback_value = str(item).strip()
+            text = callback_value
 
-        builder.button(text=display_text, callback_data=f"{callback_prefix}_{item.value}")
+        # Проверяем чтобы callback был валиден
+        if not callback_value or " " in callback_value or "." in callback_value:
+            raise ValueError(f"Invalid callback_data value: {callback_value}")
 
+        builder.button(text=text, callback_data=f"{callback_prefix}_{callback_value}")
+        print(f"btn: text-{text}\n callback: {callback_prefix}_{callback_value}")
     builder.adjust(per_row)
     return builder.as_markup()
 
 
 def get_ui_button(name: str, lang_data: dict) -> InlineKeyboardButton:
-    text = lang_data.get("ui_buttons", {}).get(name, name)  # Фолбэк на name если перевода нет
+    text = lang_data.get("ui_buttons", {}).get(name, name)  # Fallback на name если перевода нет
     return InlineKeyboardButton(text=text, callback_data=name)
 
 
@@ -60,9 +56,9 @@ def ui_buttons_for_role(role: Role, lang_data: dict) -> InlineKeyboardMarkup:
     return ui_buttons_kb(button_keys, lang_data)
 
 
-def get_access_confirmation(new_worker) -> InlineKeyboardMarkup:
-    button1 = InlineKeyboardButton(text="Accept", callback_data=f"access_accept_{new_worker}")
-    button2 = InlineKeyboardButton(text="Reject", callback_data=f"access_reject_{new_worker}")
+def get_access_confirmation(key) -> InlineKeyboardMarkup:
+    button1 = InlineKeyboardButton(text="Accept", callback_data=f"access_accept_{key}")
+    button2 = InlineKeyboardButton(text="Reject", callback_data=f"access_reject_{key}")
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[[button1, button2]])
     return confirm_kb
@@ -87,24 +83,6 @@ def order_menu_kb(role: str) -> InlineKeyboardMarkup:
 
     if role == 'superadmin':
         builder.add(InlineKeyboardButton(text="Completed orders", callback_data="completed_orders"))
-
-    builder.adjust(2)
-    return builder.as_markup()
-
-
-def get_car_keyboard_from_list(cars: list[tuple]) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    for car in cars:
-        car_id, first_name, last_name, phone, model, year, plate = car
-        button_text = f"{first_name} {last_name} • {model} ({year}) • {plate}"
-        if len(button_text) > 64:
-            button_text = button_text[:61] + "..."
-
-        builder.add(InlineKeyboardButton(
-            text=button_text,
-            callback_data=f"car_id_{car_id}"
-        ))
 
     builder.adjust(2)
     return builder.as_markup()

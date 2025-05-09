@@ -3,64 +3,72 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from database.db_crud import (add_employee_approval, add_employee, get_approver_employees_telegram_id, get_employer_car,
-                              add_employer_car, delete_employer_car_by_id, edit_car_info, get_role_by_telegram_id)
-from database.state_models import UserCookies, EmployerState
-from keyboards.general.other import get_access_confirmation, menu_by_role, car_employer_menu_kb
-from keyboards.general.parsers import parse_enum_callback
+from database.employees_pg import get_approver_employees_telegram_id, add_employee, add_employee_approval, \
+    get_employer_car, add_employer_car, delete_employer_car_by_id, edit_car_info
+from database.general_pg import add_temporary_data, get_temp_data
+from database.state_models import UserContext, EmployerState
+from keyboards.general.other import get_access_confirmation, menu_by_role, car_employer_menu_kb, ui_buttons_for_role
+from utils.parsers import parse_enum_callback
 from settings import bot
-from utils import validate_car_data, is_likely_license_plate, is_date, str_encode, str_decode
+from utils import validate_car_data, is_likely_license_plate, is_date
 from utils.enums import Role
 
 general = Router()
 
 
 @general.callback_query(F.data.startswith('role_'))
-async def choice_role(callback: CallbackQuery):
+async def choice_role(callback: CallbackQuery, user: UserContext):
     await callback.answer()
     role = parse_enum_callback(callback.data, "role", Role)
-
-    user_id = callback.message.from_user.id
-    lang = UserCookies(user_id).get_lang()
-    lng_message = lang.get("info").get("user_accept")
-    msg_list = lng_message.split(":")
-    first_message = msg_list[0] + callback.from_user.first_name + msg_list[1]
-
+    user_name = callback.from_user.first_name
+    lang = user.lang
+    message = lang.info.new_user_info_notif.format(name=user_name, position=role.value)
+    print(f"message: {message}")
     telegram_id = callback.from_user.id
     first_name = callback.from_user.first_name
-    last_name = callback.from_user.last_name
-    user_role = callback.data.split("_")[1]
 
-    new_worker_data = f"{telegram_id}-{first_name}-{last_name}-{user_role}"
-    encode_str = str_encode(new_worker_data)
-
+    new_worker_data = {
+                       "telegram_id": telegram_id,
+                       "first_name": first_name,
+                       "role": role.value
+                       }
     print(new_worker_data)
+    key = await add_temporary_data(new_worker_data)
+    print(f" key: {key}")
     # Уходит запрос на должность выше
-    role_list = get_approver_employees_telegram_id(role)
+    role_list = await get_approver_employees_telegram_id(role)
 
     for tele_id in role_list:
         await bot.send_message(chat_id=tele_id,
-                               text=first_message,
-                               reply_markup=get_access_confirmation(encode_str))
+                               text=message,
+                               reply_markup=get_access_confirmation(key))
 
-    lng_msg = lang.get('unknown_user').get('waiting_accept')
-    msg_list = lng_msg.split(":")
-    second_message = f"{msg_list[0]} {callback.data.split("_")[1]}{msg_list[1]}"
+    msg_for_new_user = lang.greetings.waiting_accept
 
-    await callback.message.answer(second_message)
+    await callback.message.edit_text(msg_for_new_user)
 
 
 @general.callback_query(F.data.startswith('access_'))
-async def get_accept_by_new_user(callback: CallbackQuery):
+async def get_accept_by_new_user(callback: CallbackQuery, user: UserContext):
+    await callback.answer()
     callback_data = callback.data.split("_")
     action = callback_data[1]
 
-    user_data = callback_data[2]
-    new_user_data = str_decode(user_data).split("-")
-    user_role = new_user_data[3]
-    telegram_id: int = int(new_user_data[0])
-    first_name = new_user_data[1]
-    last_name = new_user_data[2]
+    key = callback_data[2]
+    print(f" key: {key}")
+    new_user_data = await get_temp_data(key)
+
+    print(f"type: {new_user_data}")
+    print(f"data: {new_user_data}")
+
+    if not new_user_data:
+        await callback.answer("Ошибка: нет данных о пользователе.")
+        print(f"new_user object: {new_user_data}")
+        return
+
+    telegram_id: int = new_user_data.get("telegram_id")
+    first_name = new_user_data.get("first_name")
+    user_role = new_user_data.get("role")
 
     if not new_user_data:
         await callback.answer("Ошибка: нет данных о пользователе.")
@@ -70,17 +78,17 @@ async def get_accept_by_new_user(callback: CallbackQuery):
         case "accept":
             senior_telegram_id = callback.from_user.id
 
-            add_employee(telegram_id=telegram_id,
-                         first_name=first_name,
-                         last_name=last_name,
-                         role=user_role)
+            await add_employee(telegram_id=telegram_id,
+                               first_name=first_name,
+                               role=user_role)
 
-            add_employee_approval(senior_telegram_id, telegram_id)
+            await add_employee_approval(senior_telegram_id, telegram_id)
 
             await callback.answer("Пользователь успешно подтверждён!")
+            lang_by_new_user = UserContext(telegram_id).lang
             await bot.send_message(chat_id=telegram_id,
                                    text="Ваша заявка принята",
-                                   reply_markup=menu_by_role(user_role))
+                                   reply_markup=ui_buttons_for_role(user.get_role(), lang_by_new_user))
 
         case "reject":
             await callback.answer("Пользователь отклонён!")
@@ -91,11 +99,11 @@ async def get_accept_by_new_user(callback: CallbackQuery):
 @general.callback_query(F.data.startswith('lang_'))
 async def get_selected_language(callback: CallbackQuery):
     user_id = callback.from_user.id
-    user = UserCookies(user_id)
+    user = UserContext(user_id)
     selected_language = F.data.split("_")[1]
-    user.update_profile(lang=selected_language)
-    lang = user.get_lang()
-    await callback.answer(lang.get("language").get("accept_lang"))
+    await user.update_lang(lang_code=selected_language)
+    lang = user.lang
+    await callback.answer(lang.language.accept_lang)
 
 
 # Автопарк сотрудников
@@ -106,7 +114,7 @@ async def my_park_actions(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     match action:
         case "list":
-            car_list = get_employer_car(employer_id)
+            car_list = await get_employer_car(employer_id)
             text = ''
             for car in car_list:
                 car_id = car.get("car_id")
@@ -141,7 +149,7 @@ async def employer_car_info(message: Message, state: FSMContext):
     if is_text_status == "ok":
         brand, model, plate, tech_date, ins_date = data
         employer_id = message.from_user.id
-        result = add_employer_car(employer_id, brand, model, plate, tech_date, ins_date)
+        result = await add_employer_car(employer_id, brand, model, plate, tech_date, ins_date)
         status = result.get("status")
         await message.answer(status)
 
@@ -186,10 +194,9 @@ async def my_park_actions(callback: CallbackQuery, state: FSMContext):
 
 
 @general.message(EmployerState.waiting_new_car)
-async def employer_car_info(message: Message, state: FSMContext):
+async def employer_car_info(message: Message, state: FSMContext, user: UserContext):
     actions = {"plate": "license_plate", "inspection": "technical_inspection", "insurance": "insurance"}
-    user_id = message.from_user.id
-    role = get_role_by_telegram_id(user_id)
+    role = user.role
     data = await state.get_data()
     text = message.text
     car = data.get("car")
@@ -197,7 +204,7 @@ async def employer_car_info(message: Message, state: FSMContext):
     action = car.get("action")
     if action == "plate":
         if is_likely_license_plate(text):
-            result = edit_car_info(actions.get(action), text, car_id)
+            result = await edit_car_info(actions.get(action), text, car_id)
             if result > 0:
                 await message.answer(f"Номерной знак изменен на {text}", reply_markup=menu_by_role(role))
 
@@ -207,7 +214,7 @@ async def employer_car_info(message: Message, state: FSMContext):
 
     else:
         if is_date(text):
-            result = edit_car_info(actions.get(action), text, car_id)
+            result = await edit_car_info(actions.get(action), text, car_id)
             if result > 0:
                 await message.answer(f"Номерной знак изменен на {text}", reply_markup=menu_by_role(role))
 

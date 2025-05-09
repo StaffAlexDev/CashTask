@@ -7,22 +7,28 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from database.state_models import FinanceStates
-from config.patterns import INVOICE_PATTERN
 from utils import get_month_year_folder
+from utils.parsers import parse_invoice
 
 chat = Router()
 
 
 @chat.message(F.chat.type.in_(ChatType.GROUP), F.text.as_("text"))
 async def handle_group_messages(message: Message, state: FSMContext):
-    text = message.text
-    match = INVOICE_PATTERN.match(text)
+    success, data, error_message = parse_invoice(message.text)
 
-    if match:
-        amount = int(text.split()[0])
-        await state.update_data(amount=amount)
-        await state.set_state(FinanceStates.waiting_for_photo)
-        await message.answer("✅ Шаблон верный! Теперь отправьте фото или несколько фото.")
+    if not success:
+        await message.reply(error_message)
+        return
+
+    amount = data["amount"]
+    payment_type = data["payment_type"]
+    description = data["description"]
+
+    await state.update_data(amount=amount)
+
+    await state.set_state(FinanceStates.waiting_for_photo)
+    await message.answer("✅ Шаблон верный! Теперь отправьте фото или несколько фото.")
 
 
 @chat.message(F.chat.type.in_(ChatType.GROUP), FinanceStates.waiting_for_photo, F.photo)

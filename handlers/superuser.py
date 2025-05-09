@@ -4,12 +4,14 @@ from aiogram.types import Message, CallbackQuery
 from dotenv import find_dotenv, load_dotenv
 from aiogram import Router, F
 
-from database.db_crud import get_financial_report, add_employee, restore_client_by_id, restore_car_by_id
-from database.state_models import UserCookies
+from database.clients_pg import restore_car_by_id
+from database.employees_pg import add_employee
+from database.finance_pg import get_financial_report
+from database.state_models import UserContext
 from keyboards.general.other import enum_kb
-from keyboards.general.parsers import parse_enum_callback
+from utils.parsers import parse_enum_callback
 from keyboards.superuser import period_by_report_kb
-from utils.enums import Period
+from utils.enums import Period, Role
 
 load_dotenv(find_dotenv())
 superuser = Router()
@@ -19,25 +21,26 @@ superuser = Router()
 async def admin_password(message: Message):
     telegram_id = message.from_user.id
     first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    role = "superadmin"
+    last_name = message.from_user.last_name is not None
+    role = Role.SUPERVISOR
 
-    add_employee(telegram_id=telegram_id,
-                 first_name=first_name,
-                 last_name=last_name,
-                 role=role)
+    await add_employee(telegram_id=telegram_id,
+                       first_name=first_name,
+                       last_name=last_name,
+                       role=role)
 
     await message.answer("Привет Superadmin")
 
 
-async def choice_period(callback: CallbackQuery):
+async def choice_period(callback: CallbackQuery, user: UserContext):
+    lang = user.lang
     await callback.answer()
-    await callback.message.answer("Выберите период", reply_markup=period_by_report_kb())
+    await callback.message.answer("Выберите период", reply_markup=period_by_report_kb(lang))
 
 
 @superuser.callback_query(F.data == "choose_period")
-async def choose_period(callback: CallbackQuery, user: UserCookies):
-    lang = user.get_lang()
+async def choose_period(callback: CallbackQuery, user: UserContext):
+    lang = user.lang
     await callback.message.edit_text(
         "Выберите период для отчета:",
         reply_markup=enum_kb(Period, lang, callback_prefix="period")
@@ -45,7 +48,7 @@ async def choose_period(callback: CallbackQuery, user: UserCookies):
 
 
 @superuser.callback_query(F.data.startswith("period_"))
-async def period_selected(callback: CallbackQuery, user: UserCookies):
+async def period_selected(callback: CallbackQuery, user: UserContext):
     period = parse_enum_callback(callback.data, "period", Period)
 
     if period is None:
@@ -54,11 +57,11 @@ async def period_selected(callback: CallbackQuery, user: UserCookies):
 
     report = get_financial_report(period=period.value)
 
-    await callback.message.edit_text(f"Ваш отчет за период {period.display_name(user.get_lang())}:\n{report}")
+    await callback.message.edit_text(f"Ваш отчет за период {period.display_name(user.lang)}:\n{report}")
 
 
 @superuser.callback_query(F.data.startswith("item_") & F.data.endswith("_restore"))
-async def handle_restore(callback: CallbackQuery, user: UserCookies):
+async def handle_restore(callback: CallbackQuery, user: UserContext):
     _, item_type, item_id, _ = callback.data.split("_")
     item_id = int(item_id)
 

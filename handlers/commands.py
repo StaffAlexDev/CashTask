@@ -1,58 +1,53 @@
-import os
-
 from aiogram import Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config.constants import LANGUAGE_DIR
-from database.db_crud import get_employee_by_telegram_id, get_role_by_telegram_id, get_orders_by_worker
-from database.state_models import UserCookies
+from config.buttons_config import SUPPORTED_LANGUAGES
+from database.orders_pg import get_orders_by_worker
+from database.state_models import UserContext
 from keyboards.admins import get_type_finance_kb, clients_menu_kb
+from keyboards.general.other import ui_buttons_for_role, enum_kb, order_menu_kb, car_park_menu_kb
+from utils.enums import Role
 
 commands = Router()
 
 
 @commands.message(Command("start"))
-async def command_start(message: Message):
-    user_id = message.from_user.id
-    user = UserCookies(user_id)
-    user_role = user.get_role()
-    lang = user.get_lang()
+async def command_start(message: Message, user: UserContext):
+    lang = user.lang
+    role = user.get_role()
 
-    print(user.get_role())
-    print(message.from_user.first_name)
-    print(message.from_user.last_name)
-
-    if user_role is None:
-        await message.answer(lang.get("unknown_user").get("greetings"), reply_markup=roles_kb())
-
+    if role == Role.UNKNOWN:
+        await message.answer(
+            lang.greetings.unknown_user,
+            reply_markup=enum_kb(Role.for_ui(), lang, "role")
+        )
     else:
-        await message.answer(lang.get("language").get("select_lang"), reply_markup=menu_by_role(user_role))
+        await message.answer(
+            lang.greetings.welcome,
+            reply_markup=ui_buttons_for_role(role, lang)
+        )
 
 
-@commands.message(Command('menu'))
-async def command_menu(message: Message):
-    user_id = message.from_user.id
-    user = UserCookies(user_id)
-    user_role = user.get_role()
-    lang = user.get_lang()
-    if user_role is not None:
-        await message.answer('Привет', reply_markup=menu_by_role(user_role))
-    else:
-        await message.answer("У вас нет доступа!")
+@commands.message(Command("menu"))
+async def command_menu(message: Message, user: UserContext):
+    lang = user.lang
+
+    await message.answer(
+        lang.greetings.welcome,
+        reply_markup=ui_buttons_for_role(user.get_role(), lang)
+    )
 
 
 @commands.message(Command('orders'))
-async def orders_menu(message: Message):
-    telegram_id = message.from_user.id
-    user = UserCookies(telegram_id)
+async def orders_menu(message: Message, user: UserContext):
     user_role = user.get_role()
-    if user_role in USER_ROLES[1:]:
+    if user_role in [Role.ADMIN, Role.SUPERADMIN]:
         await message.answer('Что делаем?', reply_markup=order_menu_kb(user_role))
-    elif user_role == USER_ROLES[0]:
-        orders_list = get_orders_by_worker(telegram_id)
 
+    elif user_role == Role.WORKER:
+        orders_list = get_orders_by_worker(user.telegram_id)
         if orders_list:
             print(orders_list)
             # await message.answer('Вот список', reply_markup=get_cars_kb(orders_list))
@@ -63,54 +58,49 @@ async def orders_menu(message: Message):
 
 
 @commands.message(Command('clients'))
-async def clients_menu(message: Message):
-    telegram_id = message.from_user.id
-    role = get_role_by_telegram_id(telegram_id)
-    if role in USER_ROLES[1:]:
+async def clients_menu(message: Message, user: UserContext):
+    role = user.get_role()
+    if role in [Role.ADMIN, Role.SUPERADMIN]:
         await message.answer('Что показать?', reply_markup=clients_menu_kb())
     else:
         await message.answer("У вас нет доступа!")
 
 
 @commands.message(Command('finance'))
-async def finance_menu(message: Message):
-    user_id = message.from_user.id
-    role = get_role_by_telegram_id(user_id)
-    if role in USER_ROLES[1:]:
+async def finance_menu(message: Message, user: UserContext):
+    role = user.get_role()
+    if role in [Role.ADMIN, Role.SUPERADMIN]:
         await message.answer('Выберите тип финансов:', reply_markup=get_type_finance_kb(role))
     else:
         await message.answer("У вас нет доступа!")
 
 
 @commands.message(Command('car_park'))
-async def car_park_menu(message: Message):
+async def car_park_menu(message: Message, user: UserContext):
     text = "Выбери действие"
     await message.answer(text, reply_markup=car_park_menu_kb())
 
 
 @commands.message(Command("languages"))
-async def command_language(message: Message):
-    os.chdir(LANGUAGE_DIR)
-    files = os.listdir()
-    user_id = message.from_user.id
-    user = get_employee_by_telegram_id(user_id)
+async def command_language(message: Message, user: UserContext):
 
-    if user is not None:
-        lang = UserCookies(user_id).get_lang()
+    role = user.get_role()
+
+    if role in [Role.WORKER, Role.ADMIN, Role.SUPERADMIN]:
         builder = InlineKeyboardBuilder()
-        for file in files:
-            if os.path.isfile(file):
-                file_name, _ = os.path.splitext(file)
-                builder.button(text=file_name, callback_data=f"lang_{file_name}")
-        builder.adjust(2)
-        lang_kb = builder.as_markup()
 
-        await message.answer(lang.get("language").get("select_lang"), reply_markup=lang_kb)
+        for code, name in SUPPORTED_LANGUAGES.items():
+            builder.button(text=name, callback_data=f"lang_{code}")
+
+        builder.adjust(2)
+
+        await message.answer(user.lang.Language.select_lang, reply_markup=builder.as_markup())
+
     else:
         await message.answer("У вас нет доступа!")
 
 
 # Отлавливаем белиберду которая не обработана другими хэндлерами
 @commands.message(F.text, ~StateFilter(None))
-async def orders_menu(message: Message):
+async def orders_menu(message: Message, user: UserContext):
     await message.reply("Это неизвестное действие")

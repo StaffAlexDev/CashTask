@@ -1,9 +1,6 @@
-from json import load
-
 from aiogram.fsm.state import State, StatesGroup
 
-from database.db_settings import get_db_connection
-from config.constants import LANGUAGE_DIR
+from database.settings_pg import get_db_connection
 from utils.enums import Role
 
 
@@ -31,62 +28,42 @@ class EmployerState(StatesGroup):
     new_data_for_car = State()
 
 
-class UserCookies:
-    _lang_cache = {}
-
-    def __init__(self, telegram_id):
+class UserContext:
+    def __init__(self, telegram_id: int):
         self.telegram_id = telegram_id
-        self.lang = "ru"
-        self.role = None
+        self.lang_code = "ru"
+        self.role = Role.UNKNOWN.value
 
-    def get_lang(self):
+    async def load_from_db(self):
+        conn = await get_db_connection()
         try:
-            if self.lang not in self._lang_cache:
-                with open(f"{LANGUAGE_DIR}/{self.lang}.json", encoding="utf-8") as lang_file:
-                    self._lang_cache[self.lang] = load(lang_file)
-            return self._lang_cache[self.lang]
-        except Exception as e:
-            print(f"Ошибка при загрузке языкового файла: {e}")
-            return {}
+            row = await conn.fetchrow(
+                '''SELECT language, role FROM employees WHERE telegram_id = $1''',
+                self.telegram_id
+            )
+            if row:
+                if row['language']:
+                    self.lang_code = row['language']
+                if row['role']:
+                    self.role = row['role']
+        finally:
+            await conn.close()
+
+    @property
+    def lang(self):
+        from languages.loader import get_lang
+        return get_lang(self.lang_code)
 
     def get_role(self) -> Role:
-        if self.role is None:
-            try:
-                with get_db_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT role FROM employees WHERE telegram_id = ?
-                    ''', (self.telegram_id,))
-                    result = cursor.fetchone()
-                    if result:
-                        self.role = result[0]
-                    else:
-                        self.role = Role.WORKER.value
-            except Exception as e:
-                print(f"Ошибка при получении роли из базы: {e}")
-                self.role = Role.WORKER.value
         return Role(self.role)
 
-    def update_profile(self, lang=None, role=None):
+    async def update_lang(self, lang_code: str):
+        conn = await get_db_connection()
         try:
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                if lang is not None:
-                    self.lang = lang
-                    cursor.execute('''
-                        UPDATE employees SET lang = ?
-                        WHERE telegram_id = ?
-                    ''', (lang, self.telegram_id))
-                if role is not None:
-                    self.role = role
-                    cursor.execute('''
-                        UPDATE employees SET role = ?
-                        WHERE telegram_id = ?
-                    ''', (role, self.telegram_id))
-                cursor.execute('''
-                    INSERT OR IGNORE INTO employees (telegram_id, lang, role)
-                    VALUES (?, ?, ?)
-                ''', (self.telegram_id, self.lang, self.role))
-                conn.commit()
-        except Exception as e:
-            print(f"Ошибка при обновлении профиля: {e}")
+            await conn.execute(
+                '''UPDATE employees SET language = $1 WHERE telegram_id = $2''',
+                lang_code, self.telegram_id
+            )
+            self.lang_code = lang_code
+        finally:
+            await conn.close()

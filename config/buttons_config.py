@@ -1,4 +1,7 @@
-from database.db_crud import get_all_clients, get_all_cars, get_all_orders, get_all_tasks, get_all_employees
+from hlam.db.employees import get_all_employees
+from hlam.db.clients import get_all_cars, get_all_clients
+from hlam.db.tasks import get_all_tasks
+from hlam.db.orders import get_all_orders
 from utils.enums import Role
 
 BUTTONS = {
@@ -11,13 +14,6 @@ BUTTONS = {
         "what_buy": {"text": "Что купить", "callback_data": "what_buy"},
         "reports": {"text": "Отчеты", "callback_data": "reports"}
     }
-
-BUTTONS_FOR_ROLE = {
-    Role.WORKER.value: ["order_in_work", "materials"],
-    Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "income_expense", "tasks"],
-    Role.SUPERADMIN.value: ["car_in_work", "what_buy", "income_expense", "reports"]
-    }
-
 # -------------------------------------------------------------------------------------------------
 UI_BUTTONS = {  # Пробное дублирование BUTTONS
     "car_in_work": "car_in_work",
@@ -30,6 +26,17 @@ UI_BUTTONS = {  # Пробное дублирование BUTTONS
     "reports": "reports"
 }
 
+BUTTONS_FOR_ROLE = {
+    Role.WORKER.value: ["order_in_work", "materials"],
+    Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "income_expense", "tasks"],
+    Role.SUPERADMIN.value: ["car_in_work", "what_buy", "income_expense", "reports"]
+    }
+
+
+SUPPORTED_LANGUAGES = {
+    "ru": "Русский",
+    "en": "English",
+}
 # =================================================================================================
 pagination_configs = {
     "client": {

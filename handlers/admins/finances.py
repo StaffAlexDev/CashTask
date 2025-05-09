@@ -2,7 +2,7 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from database.db_crud import add_finance_by_car
+from database.finance_pg import add_finance_by_car
 from database.state_models import FinanceStates
 from handlers.admins import admins
 from keyboards.admins import get_finance_kb
@@ -41,7 +41,7 @@ async def wait_sum(message: Message, state: FSMContext):
     amount = int(data[0])
     description = data[1]
     admin_id = message.from_user.id
-    add_finance_by_car(amount=amount, finance_type=type_finance, description=description,  admin_id=admin_id)
+    await add_finance_by_car(amount=amount, finance_type=type_finance, description=description,  admin_id=admin_id)
 
     print(f"Сумма инвестиции: {amount}")
     await message.answer(f"Сумма {amount} сохранена!")

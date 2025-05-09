@@ -1,8 +1,9 @@
 import re
 from datetime import datetime
+from typing import Optional
 
 from config.patterns import LICENSE_PLATE_PATTERNS, PHONE_PATTERN, DATE_PATTERN, BRAND_PATTERN, MODEL_PATTERN, \
-    VIN_PATTERN, NAME_PATTERN, SOCIAL_PATTERN
+    VIN_PATTERN, NAME_PATTERN, SOCIAL_PATTERN, PAYMENT_TYPE_PATTERNS
 
 
 def is_likely_license_plate(text: str) -> bool:
@@ -20,34 +21,8 @@ def is_likely_license_plate(text: str) -> bool:
     return False
 
 
-def normalize_number(phone: str) -> str:
-    phone = phone.strip()
-    phone = re.sub(r"[^\d+]", "", phone)
-    if phone.startswith('+'):
-        phone = '+' + re.sub(r"[^\d]", "", phone[1:])
-    else:
-        phone = re.sub(r"[^\d]", "", phone)
-    return phone
-
-
 def is_phone_number(phone: str) -> bool:
     return bool(re.match(PHONE_PATTERN, normalize_number(phone)))
-
-
-def normalize_date(date_str: str) -> str | None:
-    try:
-        dt = datetime.strptime(date_str.strip(), "%d.%m.%y")
-
-        if dt.year < 100:
-            dt = dt.replace(year=dt.year + 2000)
-        return dt.strftime("%d.%m.%Y")
-    except ValueError:
-        try:
-
-            dt = datetime.strptime(date_str.strip(), "%d.%m.%Y")
-            return dt.strftime("%d.%m.%Y")
-        except ValueError:
-            return None
 
 
 def is_date(text: str) -> bool:
@@ -133,3 +108,40 @@ def validate_contact(text: str) -> dict:
     if errors:
         return {"status": "error", "field": "contact", "error": f"Некорректные контакты: {', '.join(errors)}"}
     return {"status": "ok"}
+
+
+def normalize_payment_type(raw: str) -> Optional[str]:
+    raw = raw.lower().replace(" ", "")
+
+    for payment_type, patterns in PAYMENT_TYPE_PATTERNS.items():
+        for pattern in patterns:
+            if pattern in raw:
+                return payment_type
+
+    return None
+
+
+def normalize_number(phone: str) -> str:
+    phone = phone.strip()
+    phone = re.sub(r"[^\d+]", "", phone)
+    if phone.startswith('+'):
+        phone = '+' + re.sub(r"[^\d]", "", phone[1:])
+    else:
+        phone = re.sub(r"[^\d]", "", phone)
+    return phone
+
+
+def normalize_date(date_str: str) -> str | None:
+    try:
+        dt = datetime.strptime(date_str.strip(), "%d.%m.%y")
+
+        if dt.year < 100:
+            dt = dt.replace(year=dt.year + 2000)
+        return dt.strftime("%d.%m.%Y")
+    except ValueError:
+        try:
+
+            dt = datetime.strptime(date_str.strip(), "%d.%m.%Y")
+            return dt.strftime("%d.%m.%Y")
+        except ValueError:
+            return None
