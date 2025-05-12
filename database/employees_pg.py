@@ -73,11 +73,20 @@ async def get_approved_employees(approver_id: int) -> list:
         await conn.close()
 
 
-async def get_approver_employees_telegram_id(role: Role) -> list[int]:
+async def get_approver_employees_telegram_id(role: Role, exclude_id) -> list[int]:
     conn = await get_db_connection()
     try:
         for upper_role in Role.get_upper_roles(role):
-            rows = await conn.fetch('SELECT telegram_id FROM employees WHERE role = $1', upper_role.value)
+            rows = await conn.fetch(
+                '''
+                SELECT telegram_id
+                  FROM employees
+                 WHERE role = $1
+                   AND telegram_id != $2
+                ''',
+                upper_role.value,
+                exclude_id
+            )
             if rows:
                 return [r['telegram_id'] for r in rows]
         return []

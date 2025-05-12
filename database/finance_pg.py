@@ -39,6 +39,7 @@ async def get_finances_by_order(order_id: int):
 
 async def get_financial_report(period: str = 'all') -> dict:
     now = datetime.now()
+    # 1) Вычисляем start_date
     period_map = {
         'day': now - timedelta(days=1),
         'week': now - timedelta(weeks=1),
@@ -46,18 +47,22 @@ async def get_financial_report(period: str = 'all') -> dict:
         'month': now - relativedelta(months=1),
         'all': None
     }
-
     if period not in period_map:
         raise ValueError(f"Недопустимый период. Доступны: {list(period_map.keys())}")
-
     start_date = period_map[period]
-    condition = 'WHERE created_at >= $1' if start_date else ''
-    params = [start_date] if start_date else []
+
+    # 2) Строим условие и базовые params
+    if start_date:
+        condition = 'WHERE created_at >= $1'
+        params = [start_date]
+    else:
+        condition = ''
+        params = []
 
     conn = await get_db_connection()
     try:
-        summary = await conn.fetch(
-            f'''
+        # 3) Суммарная часть — одинарное использование params
+        summary_q = f"""
             SELECT type, SUM(amount) AS total_amount, COUNT(*) AS count
             FROM (
                 SELECT type, amount, created_at FROM finances_by_car
@@ -66,22 +71,24 @@ async def get_financial_report(period: str = 'all') -> dict:
             )
             {condition}
             GROUP BY type
-            ''', *params
-        )
+        """
+        summary = await conn.fetch(summary_q, *params)
 
-        transactions = await conn.fetch(
-            f'''
-            SELECT 'by_car' as source, amount, type, description, created_at, order_id
+        # 4) Транзакции — дублируем params ровно дважды
+        args = params + params
+        transactions_q = f"""
+            SELECT 'by_car' AS source, amount, type, description, created_at, order_id
             FROM finances_by_car
             {condition}
             UNION ALL
-            SELECT 'general' as source, amount, type, description, created_at, NULL as order_id
+            SELECT 'general' AS source, amount, type, description, created_at, NULL AS order_id
             FROM finances_general
             {condition}
             ORDER BY created_at DESC
-            ''', *params * 2
-        )
+        """
+        transactions = await conn.fetch(transactions_q, *args)
 
+        # 5) Подсчёт итогов
         total_income = sum(r['total_amount'] for r in summary if r['type'] == 'income')
         total_expense = sum(r['total_amount'] for r in summary if r['type'] == 'expense')
 

@@ -59,7 +59,8 @@ async def delete_client_by_id(client_id: int, deleted_by: int) -> bool:
         result = await conn.execute(
             'UPDATE clients SET is_deleted = TRUE WHERE client_id = $1', client_id
         )
-        if result[-1] != '0':
+        count = int(result.split()[1])
+        if count > 0:
             await conn.execute(
                 'INSERT INTO deletion_logs (item_type, item_id, deleted_by) VALUES ($1, $2, $3)',
                 'client', client_id, deleted_by

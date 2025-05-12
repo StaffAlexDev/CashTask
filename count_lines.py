@@ -77,8 +77,8 @@ def print_project_structure(directory, prefix=""):
 if __name__ == "__main__":
     project_dir = os.path.dirname(__file__)
 
-    print("=== Project Structure ===")
-    print_project_structure(project_dir)
+    # print("=== Project Structure ===")
+    # print_project_structure(project_dir)
 
-    # print("\n=== Code Lines Stats ===")
-    # count_code_lines_in_project(project_dir)
+    print("\n=== Code Lines Stats ===")
+    count_code_lines_in_project(project_dir)

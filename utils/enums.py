@@ -83,14 +83,9 @@ class OrderStatus(BaseEnum):
 
 
 class TaskStatus(BaseEnum):
+    NEW = "new"
     IN_PROGRESS = "in_progress"
     DONE = "done"
-
-
-class FinanceType(BaseEnum):
-    INCOME = "income"
-    EXPENSE = "expense"
-    FUEL = "fuel"
 
 
 class Period(BaseEnum):

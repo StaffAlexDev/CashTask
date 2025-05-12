@@ -9,7 +9,7 @@ from config.patterns import SOCIAL_PATTERN
 from database.clients_pg import add_client, add_car, get_client_id_by_name
 from database.state_models import ClientStates
 from handlers.admins import admins
-from keyboards.general.paginations import get_paginated_list
+from keyboards.paginations import get_paginated_list
 from utils import validate_car_data
 from utils.validators import validate_contact, is_phone_number, normalize_number
 

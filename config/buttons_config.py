@@ -1,41 +1,70 @@
-from hlam.db.employees import get_all_employees
-from hlam.db.clients import get_all_cars, get_all_clients
-from hlam.db.tasks import get_all_tasks
-from hlam.db.orders import get_all_orders
+from database.clients_pg import get_all_clients, get_all_cars
+from database.employees_pg import get_all_employees
+from database.orders_pg import get_all_orders
+from database.tasks_pg import get_all_tasks
 from utils.enums import Role
+from languages.ru import lang as ru_lang
+from languages.en import lang as en_lang
 
-BUTTONS = {
-        "car_in_work": {"text": "Авто в работе", "callback_data": "car_in_work"},
-        "materials": {"text": "Нужны материалы", "callback_data": "materials"},
-        "tasks": {"text": "Задачи", "callback_data": "tasks"},
-        "new_order": {"text": "Заказ-Наряд", "callback_data": "new_order"},
-        "order_in_work": {"text": "Заказ-Наряд", "callback_data": "order_in_work"},
-        "add_task": {"text": "Добавить задачу", "callback_data": "add_task"},
-        "what_buy": {"text": "Что купить", "callback_data": "what_buy"},
-        "reports": {"text": "Отчеты", "callback_data": "reports"}
-    }
-# -------------------------------------------------------------------------------------------------
-UI_BUTTONS = {  # Пробное дублирование BUTTONS
-    "car_in_work": "car_in_work",
-    "materials": "materials",
-    "tasks": "tasks",
-    "new_order": "new_order",
-    "order_in_work": "order_in_work",
-    "add_task": "add_task",
-    "what_buy": "what_buy",
-    "reports": "reports"
+BUTTONS_COMMON = {
+    # Главное меню по ролям
+    "main_menu": {
+        Role.WORKER.value: ["order_in_work", "materials"],
+        Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "tasks"],
+        Role.SUPERADMIN.value: ["car_in_work", "what_buy", "reports"]
+    },
+
+    # Финансы
+    "finance": {
+        "base": ["finance_income", "finance_expense", "finance_fuel"],
+        Role.SUPERADMIN.value: ["finance_report"]
+    },
+
+    # Заказы
+    "orders": {
+        "base": ["new_order", "open_orders"],
+        Role.SUPERADMIN.value: ["completed_orders"]
+    },
+
+    # Навигация
+    "navigation": ["back", "main_menu", "cancel", "close"],
+    # "submit", "confirm",
+    # Управление
+    "control": ["access_accept", "access_reject"],
+
+    # Пагинация
+    "pagination": ["prev_page", "next_page", "exit_pagination", "back_to_list"],
+
+    # Клиенты
+    "clients": ["add_client", "all_clients"],
+
+    # Автомобили
+    "cars": ["add_car", "all_cars", "my_park_add", "my_park_list"],
+
+    # Отчеты
+    "reports": ["period_day", "period_week", "period_two_weeks", "period_month"],
+
+    # Типы заказов
+    "order_types": ["by_client", "by_car"],
+
+    # Типы финансов
+    "finance_types": ["from_car", "general"],
+
+    # Действия с авто
+    "car_actions": ["plate", "inspection", "insurance", "edit", "delete", "restore"]
 }
 
-BUTTONS_FOR_ROLE = {
-    Role.WORKER.value: ["order_in_work", "materials"],
-    Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "income_expense", "tasks"],
-    Role.SUPERADMIN.value: ["car_in_work", "what_buy", "income_expense", "reports"]
-    }
+
+# BUTTONS_FOR_ROLE = {
+#     Role.WORKER.value: ["order_in_work", "materials"],
+#     Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "tasks"],
+#     Role.SUPERADMIN.value: ["car_in_work", "what_buy", "reports"]
+#     }
 
 
-SUPPORTED_LANGUAGES = {
-    "ru": "Русский",
-    "en": "English",
+LANGUAGE_REGISTRY = {
+    "ru": ("Русский", ru_lang),
+    "en": ("English", en_lang)
 }
 # =================================================================================================
 pagination_configs = {

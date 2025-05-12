@@ -3,7 +3,7 @@ from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from handlers.admins import admins
-from handlers.workers import worker
+from handlers.employers import worker
 from handlers.superuser import superuser
 from handlers.general import general
 from handlers.chat import chat

@@ -1,12 +1,14 @@
 from aiogram import F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from config.buttons_config import pagination_configs
 from database.clients_pg import delete_client_by_id, get_car_by_id, get_client_by_id
 from database.employees_pg import delete_car_by_id
+from database.state_models import UserContext
 
 from handlers.admins import admins
-from keyboards.general.paginations import get_paginated_list
+from keyboards.paginations import get_paginated_list
 
 
 @admins.callback_query(F.data.startswith("item_"))
@@ -67,43 +69,44 @@ async def handle_back_to_list(callback: CallbackQuery):
     await callback.answer()
 
 
-@admins.callback_query(F.data.startswith("prev_"))
-async def prev_page(callback: CallbackQuery):
-    _, page, prefix = callback.data.split("_")
-    config = pagination_configs.get(prefix)
-    if not config:
-        await callback.answer("Неизвестный тип данных", show_alert=True)
-        return
+@admins.callback_query(F.data.startswith("prev_") | F.data.startswith("next_"))
+async def universal_paginate(
+    callback: CallbackQuery,
+    state: FSMContext,
+    user: UserContext
+):
+    # Разбираем action ("prev"/"next"), текущую страницу и префикс списка
+    action, page_str, prefix = callback.data.split("_", 2)
+    page = int(page_str) + (1 if action == "next" else -1)
 
-    page = int(page) - 1
+    # Попробуем взять сохранённый список из state
+    data = await state.get_data()
+    state_key = f"{prefix}_list"
+    items = data.get(state_key)
+
+    # Если в state нет — получаем "свежие" данные через get_items_func + фильтры
+    config = pagination_configs.get(prefix)  # contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}
+    if not items:
+        if not config:
+            return await callback.answer("Нечего показывать.")
+        # применяем фильтры из config, если есть
+        filters = config.get("filters") or {}
+        items = await config["get_items_func"](**filters) \
+            if callable(config["get_items_func"]) else []
+        # сохраняем в state, чтобы при следующей навигации не дергать БД
+        await state.update_data({state_key: items})
+
+    # Строим текст + клавиатуру для нужной страницы
     message, keyboard = get_paginated_list(
-        get_items_func=config["get_items_func"],
+        get_items_func=lambda **kw: items,
         build_button_text=config["build_button_text"],
         callback_prefix=prefix,
         back_callback=config["back_callback"],
         title=config["title"],
-        page=page
-    )
-    await callback.message.edit_text(message, reply_markup=keyboard)
-    await callback.answer()
+        page=page,
+        per_page=config.get("per_page", 6)
+    )  # :contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
 
-
-@admins.callback_query(F.data.startswith("next_"))
-async def next_page(callback: CallbackQuery):
-    _, page, prefix = callback.data.split("_")
-    config = pagination_configs.get(prefix)
-    if not config:
-        await callback.answer("Неизвестный тип данных", show_alert=True)
-        return
-
-    page = int(page) + 1
-    message, keyboard = get_paginated_list(
-        get_items_func=config["get_items_func"],
-        build_button_text=config["build_button_text"],
-        callback_prefix=prefix,
-        back_callback=config["back_callback"],
-        title=config["title"],
-        page=page
-    )
+    # Обновляем сообщение
     await callback.message.edit_text(message, reply_markup=keyboard)
     await callback.answer()

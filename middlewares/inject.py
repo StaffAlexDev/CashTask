@@ -28,6 +28,8 @@ class UserInjectMiddleware(BaseMiddleware):
             user_id = event.chat_member.from_user.id
 
         if user_id:
-            data["user"] = UserContext(user_id)
+            user = UserContext(user_id)
+            await user.load_from_db()
+            data["user"] = user
 
         return await handler(event, data)

@@ -36,7 +36,7 @@ async def create_tables():
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS employer_cars (
                 car_id SERIAL PRIMARY KEY,
-                employer_id BIGINT UNIQUE,
+                employer_id BIGINT,
                 car_brand VARCHAR(50),
                 car_model VARCHAR(50),
                 license_plate VARCHAR(20) UNIQUE,

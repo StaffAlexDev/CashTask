@@ -11,14 +11,14 @@ async def add_temporary_data(data: dict) -> str:
     try:
         await conn.execute(
             '''INSERT INTO temporary_data (key, data) VALUES ($1, $2)''',
-            key, json.dumps(data)
+            key, data
         )
         return key
     finally:
         await conn.close()
 
 
-async def get_temp_data(key: str) -> dict | None:
+async def get_temporary_data(key: str) -> dict | None:
     conn = await get_db_connection()
     try:
         row = await conn.fetchrow('SELECT data FROM temporary_data WHERE key = $1', key)

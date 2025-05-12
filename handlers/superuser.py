@@ -4,13 +4,12 @@ from aiogram.types import Message, CallbackQuery
 from dotenv import find_dotenv, load_dotenv
 from aiogram import Router, F
 
-from database.clients_pg import restore_car_by_id
+from database.clients_pg import restore_car_by_id, restore_client_by_id
 from database.employees_pg import add_employee
 from database.finance_pg import get_financial_report
 from database.state_models import UserContext
-from keyboards.general.other import enum_kb
+from keyboards.other import enum_kb
 from utils.parsers import parse_enum_callback
-from keyboards.superuser import period_by_report_kb
 from utils.enums import Period, Role
 
 load_dotenv(find_dotenv())
@@ -18,32 +17,23 @@ superuser = Router()
 
 
 @superuser.message(F.text == os.getenv("SUPERADMIN_PASS"))
-async def admin_password(message: Message):
-    telegram_id = message.from_user.id
+async def admin_password(message: Message, user: UserContext):
+    telegram_id = user.telegram_id
     first_name = message.from_user.first_name
-    last_name = message.from_user.last_name is not None
     role = Role.SUPERVISOR
 
     await add_employee(telegram_id=telegram_id,
                        first_name=first_name,
-                       last_name=last_name,
                        role=role)
 
     await message.answer("Привет Superadmin")
 
 
-async def choice_period(callback: CallbackQuery, user: UserContext):
-    lang = user.lang
-    await callback.answer()
-    await callback.message.answer("Выберите период", reply_markup=period_by_report_kb(lang))
-
-
 @superuser.callback_query(F.data == "choose_period")
 async def choose_period(callback: CallbackQuery, user: UserContext):
-    lang = user.lang
     await callback.message.edit_text(
         "Выберите период для отчета:",
-        reply_markup=enum_kb(Period, lang, callback_prefix="period")
+        reply_markup=enum_kb(Period.for_ui(), user.lang, callback_prefix="period")
     )
 
 

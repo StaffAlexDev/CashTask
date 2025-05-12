@@ -8,15 +8,15 @@ INVOICE_PATTERN = re.compile(
 )
 
 PAYMENT_TYPE_PATTERNS = {
-    "нал": ["нал", "налл", "налик", "нл"],
-    "безнал": ["безнал", "бнал", "бзнал", "бзнл", "бз"]
+    "нал": ["нал", "налл", "налик", "нл", "cash", ],
+    "безнал": ["безнал", "бнал", "бзнал", "бзнл", "бз", "card", "transfer", "bank", "перевод", "картой"]
 }
 
 NAME_PATTERN = r'^[a-zA-Zа-яА-ЯёЁ\-]{2,20}(?:\s[a-zA-Zа-яА-ЯёЁ\-]{2,20})?$'
 PHONE_PATTERN = re.compile(r"^\+?\d{10,15}$", re.IGNORECASE)
 
-BRAND_PATTERN = r"^[A-Za-zА-Яа-яЁё]+$"
-MODEL_PATTERN = r"^[A-Za-zА-Яа-яЁё0-9\- ]+$"
+BRAND_PATTERN = r"^[\w\s\-]{2,30}$"
+MODEL_PATTERN = r"^[\w\s\-]{2,40}$"
 VIN_PATTERN = r"^[A-HJ-NPR-Z0-9]{17}$"
 
 DATE_PATTERN = r"^\d{2}\.\d{2}\.\d{4}$"
@@ -40,18 +40,18 @@ LICENSE_PLATE_PATTERNS = [
     ]
 
 SOCIAL_PATTERN = r'''
-    ^(?:https?:\/\/)?                # Опциональный протокол (http/https)
-    (?:www\.)?                       # Опциональный www.
-    (?:                              # Допустимые домены:
-        telegram\.me|t\.me|          # Telegram
-        instagram\.com|              # Instagram
-        wa\.me|                      # WhatsApp
-        viber\.com|                  # Viber
-        tiktok\.com|                 # TikTok
-        facebook\.com|               # Facebook
-        twitter\.com|x\.com          # Twitter/X
-    )
-    \/[a-zA-Z0-9_\-\.]{1,30}\/?$    # Логин (1-30 символов: буквы, цифры, _, -, .)
-    |                                # ИЛИ
-    ^@[a-zA-Z0-9_\-\.]{3,30}$       # Никнейм (начинается с @, 3-30 символов)
-'''
+        ^(?:https?:\/\/)?
+        (?:www\.)?
+        (?:
+            telegram\.me|t\.me|
+            instagram\.com|
+            wa\.me|
+            viber\.com|
+            tiktok\.com|
+            facebook\.com|
+            twitter\.com|x\.com
+        )
+        \/[a-zA-Z0-9_\-\.]{1,30}\/?$
+        |
+        ^@[a-zA-Z0-9_\-\.]{3,30}$
+    '''

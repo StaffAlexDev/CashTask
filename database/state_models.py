@@ -24,8 +24,8 @@ class FinanceStates(StatesGroup):
 
 
 class EmployerState(StatesGroup):
-    waiting_new_car = State()
-    new_data_for_car = State()
+    waiting_add_car = State()
+    waiting_update_car = State()
 
 
 class UserContext:
