@@ -6,6 +6,34 @@ from database.settings_pg import get_db_connection
 async def create_tables():
     conn = await get_db_connection()
     try:
+
+        await conn.execute("""
+            DO
+            $$
+            DECLARE
+                r RECORD;
+            BEGIN
+              FOR r IN (
+                SELECT tablename
+                  FROM pg_tables
+                 WHERE schemaname = 'public'
+              ) LOOP
+                EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+              END LOOP;
+            END
+            $$;
+        """)
+
+        # Таблица фирмы
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS companies (
+                company_id   SERIAL PRIMARY KEY,
+                name         TEXT    NOT NULL,
+                invite_code  TEXT    UNIQUE NOT NULL,  -- случайная строка-токен
+                created_at   TIMESTAMP DEFAULT NOW()
+            );
+        """)
+
         # Таблица сотрудников
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS employees (
@@ -16,7 +44,8 @@ async def create_tables():
                 language VARCHAR(10),
                 phone_number VARCHAR(20),
                 role VARCHAR(20),
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -28,7 +57,8 @@ async def create_tables():
                 approved_id BIGINT NOT NULL,
                 approved_at TIMESTAMPTZ DEFAULT NOW(),
                 FOREIGN KEY (approver_id) REFERENCES employees(telegram_id) ON DELETE CASCADE,
-                FOREIGN KEY (approved_id) REFERENCES employees(telegram_id) ON DELETE CASCADE
+                FOREIGN KEY (approved_id) REFERENCES employees(telegram_id) ON DELETE CASCADE,
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -42,7 +72,8 @@ async def create_tables():
                 license_plate VARCHAR(20) UNIQUE,
                 technical_inspection DATE,
                 insurance DATE,
-                FOREIGN KEY (employer_id) REFERENCES employees(telegram_id) ON DELETE CASCADE
+                FOREIGN KEY (employer_id) REFERENCES employees(telegram_id) ON DELETE CASCADE,
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -55,7 +86,8 @@ async def create_tables():
                 phone_number VARCHAR(20) UNIQUE,
                 social_network VARCHAR(100),
                 is_deleted BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -69,7 +101,8 @@ async def create_tables():
                 license_plate VARCHAR(20) UNIQUE,
                 vin_code VARCHAR(30) UNIQUE,
                 is_deleted BOOLEAN DEFAULT FALSE,
-                FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE
+                FOREIGN KEY (client_id) REFERENCES clients(client_id) ON DELETE CASCADE,
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -84,7 +117,8 @@ async def create_tables():
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW(),
                 FOREIGN KEY (car_id) REFERENCES cars(car_id) ON DELETE CASCADE,
-                FOREIGN KEY (worker_id) REFERENCES employees(telegram_id) ON DELETE SET NULL
+                FOREIGN KEY (worker_id) REFERENCES employees(telegram_id) ON DELETE SET NULL,
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -99,37 +133,28 @@ async def create_tables():
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW(),
                 FOREIGN KEY (assigned_to) REFERENCES employees(telegram_id) ON DELETE CASCADE,
-                FOREIGN KEY (assigned_by) REFERENCES employees(telegram_id) ON DELETE SET NULL
+                FOREIGN KEY (assigned_by) REFERENCES employees(telegram_id) ON DELETE SET NULL,
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
-        # Таблица финансов по автомобилям
+        # Таблица финансов
         await conn.execute("""
-            CREATE TABLE IF NOT EXISTS finances_by_car (
-                finance_id SERIAL PRIMARY KEY,
-                amount NUMERIC(12, 2) NOT NULL,
-                type VARCHAR(20) NOT NULL,
-                description TEXT,
-                photo TEXT,
-                admin_id BIGINT,
-                order_id INTEGER,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                FOREIGN KEY (admin_id) REFERENCES employees(telegram_id) ON DELETE SET NULL,
-                FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE SET NULL
-            );
-        """)
-
-        # Таблица общих финансов
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS finances_general (
-                finance_id SERIAL PRIMARY KEY,
-                amount NUMERIC(12, 2) NOT NULL,
-                type VARCHAR(20) NOT NULL,
-                description TEXT,
-                photo TEXT,
-                admin_id BIGINT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                FOREIGN KEY (admin_id) REFERENCES employees(telegram_id) ON DELETE SET NULL
+            CREATE TABLE finances (
+                finance_id    SERIAL      PRIMARY KEY,
+                amount        NUMERIC(12,2) NOT NULL,      -- всегда положительное число
+                direction     VARCHAR(3)    NOT NULL,      -- 'in' или 'out'
+                category      VARCHAR(30)   NOT NULL,      -- например, 'director_fund','client_advance','part_purchase'
+                company_id    INTEGER       NOT NULL REFERENCES companies(company_id),
+                admin_id      INTEGER       NOT NULL REFERENCES employees(user_id),
+                client_id     INTEGER       NULL    REFERENCES clients(client_id),
+                car_id        INTEGER       NULL    REFERENCES cars(car_id),
+                advance_src   INTEGER       NULL    REFERENCES finances(finance_id),  
+                -- если эта расходная операция профинансирована авансом клиента,
+                -- тут хранится ID записи-аванса (direction='in', category='client_advance')
+                description   TEXT,
+                photo         TEXT,
+                created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
             );
         """)
 
@@ -139,7 +164,8 @@ async def create_tables():
                 id SERIAL PRIMARY KEY,
                 key VARCHAR(34) UNIQUE,
                 data JSONB,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                company_id INTEGER NOT NULL REFERENCES companies(company_id)
             );
         """)
 
@@ -154,11 +180,53 @@ async def create_tables():
             );    
         """)
 
+        # Индексы для ускоренного запросов по таблицам
         await conn.execute("""
-            INSERT INTO employees (telegram_id, first_name, role)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (telegram_id) DO NOTHING;
-            """, 202126961, 'Алексей', 'superadmin')
+            CREATE INDEX IF NOT EXISTS idx_employees_company
+                ON employees(company_id);
+
+            CREATE INDEX IF NOT EXISTS idx_clients_company
+                ON clients(company_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_cars_company
+                ON cars(company_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_employer_cars_company
+                ON employer_cars(company_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_finances_company
+                ON finances(company_id);
+
+            CREATE INDEX IF NOT EXISTS idx_finances_client
+                ON finances(client_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_finances_car
+                ON finances(car_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_finances_category_direction
+                ON finances(company_id, category, direction, created_at DESC);
+            
+            CREATE INDEX IF NOT EXISTS idx_employer_cars_employer
+                ON employer_cars(employer_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_cars_client
+                ON cars(client_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_orders_car
+                ON orders(car_id);
+            
+            CREATE INDEX IF NOT EXISTS idx_orders_company_status_created
+                ON orders(company_id, status, created_at DESC);
+            
+            CREATE INDEX IF NOT EXISTS idx_tasks_company_assigned_status
+                ON tasks(company_id, assigned_to, status);
+        """)
+
+        # await conn.execute("""
+        #     INSERT INTO employees (telegram_id, first_name, role)
+        #     VALUES ($1, $2, $3)
+        #     ON CONFLICT (telegram_id) DO NOTHING;
+        #     """, 202126961, 'Алексей', 'superadmin')
 
         print("Таблицы успешно созданы!")
 

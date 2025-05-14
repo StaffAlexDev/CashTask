@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, Message
 from config.buttons_config import pagination_configs
 from config.patterns import SOCIAL_PATTERN
 from database.clients_pg import add_client, add_car, get_client_id_by_name
-from database.state_models import ClientStates
+from models.state_models import ClientStates
 from handlers.admins import admins
 from keyboards.paginations import get_paginated_list
 from utils import validate_car_data

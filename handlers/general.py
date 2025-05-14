@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery
 
 from database.employees_pg import get_approver_employees_telegram_id, add_employee, add_employee_approval
 from database.general_pg import add_temporary_data, get_temporary_data
-from database.state_models import UserContext
+from models.state_models import UserContext
 from keyboards.other import get_access_confirmation, common_kb_by_role
 from utils.parsers import parse_enum_callback
 from settings import bot

@@ -5,11 +5,11 @@ from aiogram.types import CallbackQuery, Message
 from database.clients_pg import get_car_by_id, get_client_cars, get_client_id_by_phone_number
 from database.employees_pg import get_all_employees
 from database.orders_pg import add_order
-from database.state_models import OrderStates, UserContext
+from models.state_models import OrderStates, UserContext
 from handlers.admins import admins
 from keyboards.other import common_kb_by_role
 from keyboards.paginations import get_paginated_list
-from utils.validators import is_likely_license_plate, normalize_number, is_phone_number
+from utils.validators import normalize_number, is_phone_number
 
 
 @admins.message(F.data == "new_order")

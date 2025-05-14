@@ -3,43 +3,79 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 
-async def add_finance_by_car(amount: float, finance_type: str, description: str, admin_id: int,
-                             order_id: int = None, photo: str = None):
+async def add_finance(
+    company_id: int,
+    amount: float,
+    direction: str,
+    category: str,
+    admin_id: int,
+    client_id: int = None,
+    car_id: int = None,
+    advance_src: int = None,
+    description: str = None,
+    photo: str = None
+) -> None:
+    """
+    Создать запись о финансовой операции в единой таблице finances.
+    direction: 'in' или 'out'
+    category: 'director_fund','client_advance','part_purchase','supplies', и т.д.
+    advance_src: ссылка на исходный аванс (finance_id) при расходе из аванса клиента
+    """
     conn = await get_db_connection()
     try:
         await conn.execute(
-            '''INSERT INTO finances_by_car (amount, type, description, admin_id, order_id, photo)
-               VALUES ($1, $2, $3, $4, $5, $6)''',
-            amount, finance_type, description, admin_id, order_id, photo
+            '''
+            INSERT INTO finances (
+                amount, direction, category,
+                company_id, admin_id, client_id, car_id, advance_src,
+                description, photo
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            ''',
+            amount, direction, category,
+            company_id, admin_id, client_id, car_id, advance_src,
+            description, photo
         )
     finally:
         await conn.close()
 
 
-async def add_finance_general(amount: float, finance_type: str, description: str, admin_id: int, photo: str = None):
+async def get_finances_by_order(
+    company_id: int,
+    order_id: int
+) -> list[dict]:
+    """
+    Вернуть все финансовые записи, связанные с конкретным заказом (часто category='part_purchase').
+    """
     conn = await get_db_connection()
     try:
-        await conn.execute(
-            '''INSERT INTO finances_general (amount, type, description, admin_id, photo)
-               VALUES ($1, $2, $3, $4, $5)''',
-            amount, finance_type, description, admin_id, photo
+        rows = await conn.fetch(
+            '''
+            SELECT * FROM finances
+            WHERE company_id = $1
+              AND car_id = (
+                  SELECT car_id FROM orders WHERE order_id = $2 AND company_id = $1
+              )
+              AND category = 'part_purchase'
+            ORDER BY created_at DESC
+            ''',
+            company_id, order_id
         )
+        return [dict(r) for r in rows]
     finally:
         await conn.close()
 
 
-async def get_finances_by_order(order_id: int):
-    conn = await get_db_connection()
-    try:
-        rows = await conn.fetch('SELECT * FROM finances_by_car WHERE order_id = $1', order_id)
-        return [dict(row) for row in rows]
-    finally:
-        await conn.close()
-
-
-async def get_financial_report(period: str = 'all') -> dict:
+async def get_financial_report(
+    company_id: int,
+    period: str = 'all'
+) -> dict:
+    """
+    Сводный отчёт по операциям за период:
+    - total_income, total_expense, profit
+    - breakdown по категориям
+    - список последних транзакций
+    """
     now = datetime.now()
-    # 1) Вычисляем start_date
     period_map = {
         'day': now - timedelta(days=1),
         'week': now - timedelta(weeks=1),
@@ -51,46 +87,43 @@ async def get_financial_report(period: str = 'all') -> dict:
         raise ValueError(f"Недопустимый период. Доступны: {list(period_map.keys())}")
     start_date = period_map[period]
 
-    # 2) Строим условие и базовые params
+    # Условия и параметры
+    cond = 'company_id = $1' + (" AND created_at >= $2" if start_date else "")
+    params = [company_id]
     if start_date:
-        condition = 'WHERE created_at >= $1'
-        params = [start_date]
-    else:
-        condition = ''
-        params = []
+        params.append(start_date)
 
     conn = await get_db_connection()
     try:
-        # 3) Суммарная часть — одинарное использование params
-        summary_q = f"""
-            SELECT type, SUM(amount) AS total_amount, COUNT(*) AS count
-            FROM (
-                SELECT type, amount, created_at FROM finances_by_car
-                UNION ALL
-                SELECT type, amount, created_at FROM finances_general
-            )
-            {condition}
-            GROUP BY type
-        """
+        # Суммы по направлениям
+        summary_q = f'''
+            SELECT direction, SUM(amount) AS total, COUNT(*) AS count
+            FROM finances
+            WHERE {cond}
+            GROUP BY direction
+        '''
         summary = await conn.fetch(summary_q, *params)
 
-        # 4) Транзакции — дублируем params ровно дважды
-        args = params + params
-        transactions_q = f"""
-            SELECT 'by_car' AS source, amount, type, description, created_at, order_id
-            FROM finances_by_car
-            {condition}
-            UNION ALL
-            SELECT 'general' AS source, amount, type, description, created_at, NULL AS order_id
-            FROM finances_general
-            {condition}
-            ORDER BY created_at DESC
-        """
-        transactions = await conn.fetch(transactions_q, *args)
+        # Свод по категориям
+        by_cat_q = f'''
+            SELECT category, direction, SUM(amount) AS total
+            FROM finances
+            WHERE {cond}
+            GROUP BY category, direction
+        '''
+        by_cat = await conn.fetch(by_cat_q, *params)
 
-        # 5) Подсчёт итогов
-        total_income = sum(r['total_amount'] for r in summary if r['type'] == 'income')
-        total_expense = sum(r['total_amount'] for r in summary if r['type'] == 'expense')
+        # Последние транзакции
+        tx_q = f'''
+            SELECT * FROM finances
+            WHERE {cond}
+            ORDER BY created_at DESC
+            LIMIT 100
+        '''
+        transactions = await conn.fetch(tx_q, *params)
+
+        total_income = sum(r['total'] for r in summary if r['direction'] == 'in')
+        total_expense = sum(r['total'] for r in summary if r['direction'] == 'out')
 
         return {
             'period': period,
@@ -100,6 +133,7 @@ async def get_financial_report(period: str = 'all') -> dict:
             'total_expense': total_expense,
             'profit': total_income - total_expense,
             'summary': [dict(r) for r in summary],
+            'by_category': [dict(r) for r in by_cat],
             'transactions': [dict(r) for r in transactions]
         }
     finally:
