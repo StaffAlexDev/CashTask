@@ -3,7 +3,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from database.employees_pg import get_employer_car, add_employer_car, delete_employer_car_by_id, edit_car_info
-from models.state_models import UserContext, EmployerState
+from models.fsm_states import EmployerState
+from models.user_context import UserContext
 from handlers.general import general
 from keyboards.other import car_employer_menu_kb, common_kb_by_role
 from utils import validate_car_data, is_likely_license_plate, is_date

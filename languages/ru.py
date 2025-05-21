@@ -3,7 +3,8 @@ from .lang_base import *
 
 lang = LangBase(
     greetings=Greetings(
-        unknown_user="Вы не зарегистрированы",
+        unknown_user="Здравствуйте, Вы ещё не зарегистрированы",
+        unknown_company="Выберите действие: создать новую фирму или присоединиться к существующей",
         waiting_accept="Ожидайте подтверждения",
         welcome="Добро пожаловать!"
     ),
@@ -54,6 +55,10 @@ lang = LangBase(
     ),
 
     ui_buttons=UiButtons(
+        # Start menu
+        company_crate="Создать",
+        company_join="Присоединиться",
+
         # Главные действия по ролям
         car_in_work="Авто в работе",
         materials="Нужны материалы",

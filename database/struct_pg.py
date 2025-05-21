@@ -45,7 +45,8 @@ async def create_tables():
                 phone_number VARCHAR(20),
                 role VARCHAR(20),
                 created_at TIMESTAMPTZ DEFAULT NOW(),
-                company_id INTEGER NOT NULL REFERENCES companies(company_id)
+                company_id INTEGER NOT NULL REFERENCES companies(company_id),
+                CONSTRAINT uniq_company_employee UNIQUE(company_id, telegram_id)
             );
         """)
 

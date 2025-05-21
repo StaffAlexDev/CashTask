@@ -10,7 +10,7 @@ async def add_employee(company_id: int, telegram_id: int, first_name: str, role:
             '''
             INSERT INTO employees (company_id, telegram_id, first_name, role)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (telegram_id, company_id) DO NOTHING
+            ON CONFLICT (telegram_id) DO NOTHING
             ''',
             company_id, telegram_id, first_name, role
         )

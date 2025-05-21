@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery
 from config.buttons_config import pagination_configs
 from database.clients_pg import delete_client_by_id, get_car_by_id, get_client_by_id
 from database.employees_pg import delete_car_by_id
-from models.state_models import UserContext
+from models.user_context import UserContext
 
 from handlers.admins import admins
 from keyboards.paginations import get_paginated_list

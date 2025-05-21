@@ -1,32 +1,67 @@
-from aiogram import Router, F
-from aiogram.filters import Command, StateFilter
+from aiogram import Router
+from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config.buttons_config import LANGUAGE_REGISTRY
 from database.orders_pg import get_orders_by_worker
-from models.state_models import UserContext
-from keyboards.other import enum_kb, common_kb_by_role
+from handlers.general.other import show_join_menu, show_start_menu
+from models.user_context import UserContext
+from keyboards.other import common_kb_by_role
 from utils.enums import Role
 
 commands = Router()
 
 
-@commands.message(Command("start"))
-async def command_start(message: Message, user: UserContext):
-    lang = user.lang
-    role = user.get_role()
+# @commands.message(Command("start"))
+# async def command_start(message: Message, command: CommandObject, user: UserContext, state: FSMContext):
+#     lang = user.lang
+#     role = user.get_role()
+#     payload = command.args or ""
+#
+#     print(f"payload: {payload}")
+#
+#     await state.update_data(nav_stack=[])
+#     await push_nav(state, command_start, message, state)
+#
+#     if payload:
+#         if role == Role.UNKNOWN:
+#             await message.answer(
+#                 lang.greetings.unknown_user,
+#                 reply_markup=enum_kb(Role.for_ui(), lang, "role")
+#             )
+#         else:
+#             await message.answer(
+#                 lang.greetings.welcome,
+#                 reply_markup=common_kb_by_role("main_menu", lang, role)
+#             )
+#     else:
+#         await message.answer(
+#             lang.greetings.unknown_company,
+#             reply_markup=common_kb_by_role("start_menu", lang, role)
+#         )
+@commands.message(Command("start"))  # Проверить обработку прохода по ссылке фирмы, исправил, но не проверял
+async def command_start(
+    message: Message,
+    command: CommandObject,
+    state: FSMContext,
+    user: UserContext
+):
+    # 1) Сброс навигации
+    await state.update_data(nav_stack=[])
+    # 2) Сохраняем код из deep link (если есть)
+    invite_code = (command.args or "").strip()
+    if invite_code:
+        await state.update_data(invite_code=invite_code)
+        # Точка возврата – главный экран
+        user.push_nav(show_start_menu, message)
+        # Перенаправляем сразу в join-блок
+        return await show_join_menu(message, state, user)
 
-    if role == Role.UNKNOWN:
-        await message.answer(
-            lang.greetings.unknown_user,
-            reply_markup=enum_kb(Role.for_ui(), lang, "role")
-        )
-    else:
-        await message.answer(
-            lang.greetings.welcome,
-            reply_markup=common_kb_by_role("main_menu", lang, role)
-        )
+    # 3) Обычный /start
+    user.push_nav(show_start_menu, message)
+    return await show_start_menu(message, user)
 
 
 @commands.message(Command("menu"))
@@ -49,7 +84,7 @@ async def orders_menu(message: Message, user: UserContext):
                              reply_markup=common_kb_by_role("orders", user.lang, user_role))
 
     elif user_role == Role.WORKER:
-        orders_list = get_orders_by_worker(user.telegram_id)
+        orders_list = get_orders_by_worker(user.company_id, user.telegram_id)
         if orders_list:
             print(orders_list)
             # await message.answer('Вот список', reply_markup=get_cars_kb(orders_list))
@@ -106,7 +141,4 @@ async def command_language(message: Message, user: UserContext):
         await message.answer(user.lang.info.no_access)
 
 
-# Отлавливаем белиберду которая не обработана другими хэндлерами
-@commands.message(F.text, ~StateFilter(None))
-async def orders_menu(message: Message, user: UserContext):
-    await message.reply(user.lang.info.unknown_action)
+

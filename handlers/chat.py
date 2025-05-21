@@ -6,7 +6,7 @@ from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from models.state_models import FinanceStates
+from models.fsm_states import FinanceStates
 from utils import get_month_year_folder
 from utils.parsers import parse_invoice
 

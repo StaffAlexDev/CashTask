@@ -2,8 +2,9 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from database.finance_pg import add_finance_by_car
-from models.state_models import FinanceStates, UserContext
+from database.finance_pg import add_finance
+from models.fsm_states import FinanceStates
+from models.user_context import UserContext
 from handlers.admins import admins
 from keyboards.other import common_kb_by_role, enum_kb
 from utils.enums import Period
@@ -38,7 +39,7 @@ async def income_from_the_car(callback: CallbackQuery, state: FSMContext):
 
 
 @admins.message(FinanceStates.investments)
-async def wait_sum(message: Message, state: FSMContext):
+async def wait_sum(message: Message, state: FSMContext, user: UserContext):
     state_data = await state.get_data()
     type_finance = state_data["type_finance"]
     type_investments = state_data["type_investments"]  # TODO перепроверить последовательно состояния
@@ -46,7 +47,8 @@ async def wait_sum(message: Message, state: FSMContext):
     amount = int(data[0])
     description = data[1]
     admin_id = message.from_user.id
-    await add_finance_by_car(amount=amount, finance_type=type_finance, description=description,  admin_id=admin_id)
+    await add_finance(company_id=user.company_id, amount=amount, direction=description, category=type_finance,
+                      admin_id=admin_id)
 
     print(f"Сумма инвестиции: {amount}, {type_finance}, {description}, {admin_id}")
     await message.edit_text(f"Сумма {amount} сохранена!")

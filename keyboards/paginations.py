@@ -66,37 +66,42 @@ def build_paginated_keyboard(
 
 
 def get_paginated_list(
-    get_items_func: Callable[[], List[Dict[str, Any]]],
-    build_button_text: Callable[[Dict[str, Any]], str],
-    callback_prefix: str,
-    back_callback: str,
+    config: Dict[str, Any],
     page: int = 1,
-    per_page: int = 6,
-    title: str = "Список:"
+    per_page: int = 6
 ) -> tuple[str, InlineKeyboardMarkup]:
-    """
-    Универсальная функция получения сообщений со списком и клавиатурой
-    """
-    items = get_items_func()
+    # 1. Достаем функцию и фильтры
+    get_items_func: Callable = config["get_items_func"]
+    filters: dict = config.get("filters", {})
+
+    # 2. Вызываем её с фильтрами
+    items = get_items_func(**filters)
+
+    # 3. Форматируем для пагинации
     formatted_items = [
         {
-            "id": item["id"] if "id" in item else item.get("client_id") or item.get("car_id"),
-            "button_text": build_button_text(item),
+            "id": item.get("id")
+                  or item.get("client_id")
+                  or item.get("car_id")
+                  or item.get("order_id")
+                  or item.get("task_id"),
+            "button_text": config["build_button_text"](item),
             "raw_data": item
         }
         for item in items
     ]
 
+    # 4. Строим клавиатуру
     keyboard = build_paginated_keyboard(
         items=formatted_items,
         page=page,
         items_per_page=per_page,
-        callback_prefix=callback_prefix,
-        back_callback=back_callback
+        callback_prefix=config["key"],      # например, храните key в конфиге
+        back_callback=config["back_callback"]
     )
 
-    message = f"{title} (Страница {page}):"
-    return message, keyboard
+    text = f"{config['title']} (Страница {page}):"
+    return text, keyboard
 
 
 def action_with_item(item_type: str, item_id: int, page: int, role: Role) -> InlineKeyboardMarkup:

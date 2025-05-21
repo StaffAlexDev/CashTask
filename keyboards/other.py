@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Iterable, Union, List, Tuple
 
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config.buttons_config import BUTTONS_COMMON
@@ -37,35 +37,13 @@ def enum_kb(
     return builder.as_markup()
 
 
-def get_ui_button(name: str, lang_data: dict) -> InlineKeyboardButton:
-    text = lang_data.get("ui_buttons", {}).get(name, name)  # Fallback на name если перевода нет
-    return InlineKeyboardButton(text=text, callback_data=name)
-
-
-def ui_buttons_kb(button_names: list[str], lang_data: dict, per_row: int = 2) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    for name in button_names:
-        builder.add(get_ui_button(name, lang_data))
-
-    builder.adjust(per_row)
-    return builder.as_markup()
-
-
-# def ui_buttons_for_role(role: Role, lang_data: dict) -> InlineKeyboardMarkup:
-#     button_keys = BUTTONS_FOR_ROLE.get(role.value, [])
-#     return ui_buttons_kb(button_keys, lang_data)
-
-
 def get_access_confirmation(key: str, lang_data: LangBase) -> InlineKeyboardMarkup:
     """Клавиатура подтверждения доступа"""
-    print("Кнопки подтверждения в get_access_confirmation")
-    print(lang_data.ui_buttons.access_accept, f"access_accept_{key}")
-    print(lang_data.ui_buttons.access_reject, f"access_reject_{key}")
+
     return common_kb_by_role(
         "control",
         lang_data,
-        Role.SUPERADMIN,  # Максимальные права для подтверждения
+        Role.SUPERVISOR,  # Максимальные права для подтверждения
         per_row=2,
         custom_buttons=[
             (lang_data.ui_buttons.access_accept, f"access_accept_{key}"),
@@ -74,7 +52,40 @@ def get_access_confirmation(key: str, lang_data: LangBase) -> InlineKeyboardMark
     )
 
 
-def car_employer_menu_kb(car_id, lang_data):
+def get_navigate_kb(lang_data, views: int):
+    """
+    Клавиатура навигации для FSM-состояний.
+
+    :param lang_data: словарь локализации (user.lang)
+    :param views: строка "1"–"4", определяющая, сколько кнопок показать
+    :return: InlineKeyboardMarkup
+    """
+    # Все возможные кнопки навигации, в порядке приоритета
+    raw = BUTTONS_COMMON.get("navigation", [])
+
+    # Для каждого уровня views — свой набор ключей
+    btn_by_views = {
+        "1": ["back"],
+        "2": ["back", "cancel"],
+        "3": ["back", "cancel", "main_menu"],
+        "4": ["back", "main_menu", "cancel", "close"],
+    }
+
+    # Берём нужные ключи (или пустой список, если views некорректно)
+    keys = btn_by_views.get(str(views), [])
+
+    # Строим список пар (текст кнопки, callback_data)
+    buttons = []
+    for key in keys:
+        if key in raw:  # на всякий случай проверяем, что ключ есть в raw
+            text = getattr(lang_data.ui_buttons, key)
+            buttons.append((text, key))
+    print(buttons)
+    # Собираем InlineKeyboardMarkup из этих пар
+    return inline_pairs_kb(buttons)
+
+
+def car_employer_menu_kb(car_id: int, lang_data: LangBase):
     buttons = [
         (lang_data.ui_buttons.edit, f"car_employer_{car_id}_edit"),
         (lang_data.ui_buttons.delete, f"car_employer_{car_id}_delete")
@@ -102,7 +113,6 @@ def common_kb_by_role(
     if custom_buttons:
         return inline_pairs_kb(custom_buttons, per_row=per_row)
 
-    raw = BUTTONS_COMMON.get(category, [])
     """
     Универсальный генератор клавиатур по категориям и ролям
 
@@ -122,12 +132,10 @@ def common_kb_by_role(
     else:
         keys = raw
 
-    # Формируем пары (текст, callback_data)
     buttons = []
     for key in keys:
         # Получаем локализованный текст
         text = getattr(lang_data.ui_buttons, key, key)
-        # Форматируем текст если нужно
         if kwargs:
             text = text.format(**kwargs)
         buttons.append((text, key))

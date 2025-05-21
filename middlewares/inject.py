@@ -1,7 +1,7 @@
 from aiogram import BaseMiddleware, types
 from typing import Any, Callable, Dict, Awaitable
 
-from models.state_models import UserContext
+from models.user_context import UserContext
 
 
 class UserInjectMiddleware(BaseMiddleware):

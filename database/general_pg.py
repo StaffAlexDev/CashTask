@@ -1,6 +1,6 @@
 
 from database.settings_pg import get_db_connection
-from utils.random_gen import generate_temp_key
+from utils.random_gen import generate_temp_data_key
 
 
 async def add_temporary_data(
@@ -10,7 +10,7 @@ async def add_temporary_data(
     """
     Сохраняет временные данные для конкретной компании и возвращает сгенерированный ключ.
     """
-    key = generate_temp_key()
+    key = generate_temp_data_key()
     conn = await get_db_connection()
     try:
         await conn.execute(

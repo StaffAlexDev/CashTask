@@ -11,5 +11,5 @@ load_dotenv(find_dotenv())
 
 bot = Bot(
     token=os.getenv("BOT_TOKEN"),
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
 )

@@ -1,3 +1,5 @@
+from functools import partial
+
 from database.clients_pg import get_all_clients, get_all_cars
 from database.employees_pg import get_all_employees
 from database.orders_pg import get_all_orders
@@ -7,11 +9,18 @@ from languages.ru import lang as ru_lang
 from languages.en import lang as en_lang
 
 BUTTONS_COMMON = {
+    "start_menu": {
+        "base": ["company_crate", "company_join"]
+    },
     # Главное меню по ролям
     "main_menu": {
         Role.WORKER.value: ["order_in_work", "materials"],
-        Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "tasks"],
-        Role.SUPERADMIN.value: ["car_in_work", "what_buy", "reports"]
+        Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "tasks", "get_my_company"],
+        Role.SUPERVISOR.value: ["car_in_work", "materials", "new_order",
+                                "add_task", "what_buy", "tasks", "get_my_company"],
+
+        Role.SUPERADMIN.value: ["car_in_work", "materials", "new_order",
+                                "add_task", "what_buy", "tasks", "get_my_company"]
     },
 
     # Финансы
@@ -54,54 +63,47 @@ BUTTONS_COMMON = {
     "car_actions": ["plate", "inspection", "insurance", "edit", "delete", "restore"]
 }
 
-
-# BUTTONS_FOR_ROLE = {
-#     Role.WORKER.value: ["order_in_work", "materials"],
-#     Role.ADMIN.value: ["car_in_work", "materials", "new_order", "add_task", "what_buy", "tasks"],
-#     Role.SUPERADMIN.value: ["car_in_work", "what_buy", "reports"]
-#     }
-
-
 LANGUAGE_REGISTRY = {
     "ru": ("Русский", ru_lang),
     "en": ("English", en_lang)
 }
+
 # =================================================================================================
+
 pagination_configs = {
     "client": {
-        "get_items_func": lambda **kwargs: get_all_clients(),
+        "get_items_func": get_all_clients,
         "build_button_text": lambda c: f"{c['first_name']} {c['last_name']} – ☎ {c['phone_number']}",
         "back_callback": "clients_menu",
         "title": "Список клиентов",
-        "filters": None
+        "filters": {}
     },
     "car": {
-        "get_items_func": lambda **kwargs: get_all_cars(),
+        "get_items_func": get_all_cars,
         "build_button_text": lambda c: f"{c['car_brand']} {c['car_model']} – {c['license_plate']}",
         "back_callback": "cars_menu",
         "title": "Список автомобилей",
-        "filters": None
+        "filters": {}
     },
     "order": {
-        "get_items_func": lambda status=None, **kwargs: get_all_orders(status),
+        "get_items_func": partial(get_all_orders, status="in_progress"),
         "build_button_text": lambda o: f"Заказ #{o['order_id']} – {o['description']} ({o['status']})",
         "back_callback": "orders_menu",
         "title": "Список заказов",
-        "filters": {"status": "in_progress"}
+        "filters": {}
     },
     "task": {
-        "get_items_func": lambda assigned_to=None, **kwargs: get_all_tasks(assigned_to),
+        "get_items_func": get_all_tasks,
         "build_button_text": lambda t: f"Задача #{t['task_id']} – {t['description']} ({t['status']})",
         "back_callback": "tasks_menu",
         "title": "Список задач",
         "filters": {"assigned_to": None}
     },
     "employee": {
-        "get_items_func": lambda role=None, **kwargs: get_all_employees(role),
+        "get_items_func": get_all_employees,
         "build_button_text": lambda e: f"{e['first_name']} {e['last_name']} – роль: {e['role']}",
         "back_callback": "employees_menu",
         "title": "Список сотрудников",
         "filters": {"role": "worker"}
     }
 }
-

@@ -1,16 +1,14 @@
-
-from aiogram import Router, F
+from aiogram import F
 from aiogram.types import CallbackQuery
 
 from database.employees_pg import get_approver_employees_telegram_id, add_employee, add_employee_approval
 from database.general_pg import add_temporary_data, get_temporary_data
-from models.state_models import UserContext
+from handlers.general import general
 from keyboards.other import get_access_confirmation, common_kb_by_role
-from utils.parsers import parse_enum_callback
+from models.user_context import UserContext
 from settings import bot
 from utils.enums import Role
-
-general = Router()
+from utils.parsers import parse_enum_callback
 
 
 @general.callback_query(F.data.startswith('role_'))
@@ -30,10 +28,10 @@ async def choice_role(callback: CallbackQuery, user: UserContext):
                        "role": role.value
                        }
     print(new_worker_data)
-    key = await add_temporary_data(new_worker_data)
+    key = await add_temporary_data(user.company_id, new_worker_data)
     print(f" key: {key}")
     # Уходит запрос на должность выше
-    list_of_confirmers = await get_approver_employees_telegram_id(role, user.telegram_id)
+    list_of_confirmers = await get_approver_employees_telegram_id(user.company_id, role, user.telegram_id)
 
     for tele_id in list_of_confirmers:
         user_confirmers = UserContext(tele_id)
@@ -56,7 +54,7 @@ async def get_accept_by_new_user(callback: CallbackQuery, user: UserContext):
     lang = user.lang
     key = callback_data[2]
     print(f"Key: {key}")
-    new_user_data = await get_temporary_data(key)
+    new_user_data = await get_temporary_data(user.company_id, key)
 
     print(f"Type: {type(new_user_data)}")
     print(f"Data: {new_user_data}")
@@ -78,15 +76,17 @@ async def get_accept_by_new_user(callback: CallbackQuery, user: UserContext):
         case "accept":
             senior_telegram_id = user.telegram_id
             lang = user.lang
-            await add_employee(telegram_id=telegram_id,
+            await add_employee(company_id=user.company_id,
+                               telegram_id=telegram_id,
                                first_name=first_name,
                                role=user_role)
 
-            await add_employee_approval(senior_telegram_id, telegram_id)
+            await add_employee_approval(user.company_id, senior_telegram_id, telegram_id)
 
             await callback.answer(lang.info.user_accept)
-            lang_by_new_user = UserContext(telegram_id).lang
-            role_by_new_user = UserContext(telegram_id).get_role()
+            new_user = UserContext(telegram_id)
+            lang_by_new_user = new_user.lang
+            role_by_new_user = new_user.get_role()
             await bot.send_message(chat_id=telegram_id,
                                    text=lang_by_new_user.info.user_accept_confirm,
                                    reply_markup=common_kb_by_role("main_menu", lang_by_new_user, role_by_new_user))
@@ -95,12 +95,3 @@ async def get_accept_by_new_user(callback: CallbackQuery, user: UserContext):
             await callback.answer(lang.info.user_rejected)
             await bot.send_message(chat_id=telegram_id,
                                    text=lang.info.your_been_rejected)
-
-
-@general.callback_query(F.data.startswith('lang_'))
-async def get_selected_language(callback: CallbackQuery, user: UserContext):
-    await callback.answer()
-    selected_language = callback.data.split("_", 1)[1]
-    await user.update_lang(selected_language)
-    lang = user.lang
-    await callback.answer(lang.language.accept_lang)

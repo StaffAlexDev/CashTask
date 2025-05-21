@@ -4,6 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class Greetings:
     unknown_user: str = ""
+    unknown_company: str = ""
     waiting_accept: str = ""
     welcome: str = ""
 
@@ -68,6 +69,10 @@ class Periods:
 
 @dataclass
 class UiButtons:
+    # Start menu
+    company_crate: str = ""
+    company_join: str = ""
+
     # Главные действия по ролям
     car_in_work: str = ""
     materials: str = ""
